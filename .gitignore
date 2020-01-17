@@ -1,8 +1,9 @@
 .vscode/settings.json
-node_modules
-api/assets/*.png
+*.pyc
 .DS_Store
 
 
 
 ui/dist
+api/assets/*.png
+node_modules

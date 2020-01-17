@@ -1,6 +1,30 @@
-<p>detection works!</p>
+<h1>C&G Detection</h1>
+
 
 <form (ngSubmit)="onSubmit(chatroomForm.value)" [formGroup]="chatroomForm">
     <div><label for="content">Message</label><input type="text" id="content" formControlName="content"></div>
     <button type="submit">Send</button>
 </form>
+
+<hr>
+<div id="result-panel">
+    <h2>Result</h2>
+    <table>
+        <tr>
+            <td>Total</td>
+            <td>{{results.total}}</td>
+        </tr>
+        <tr>
+            <td>Crypto</td>
+            <td>{{results.crypto}}</td>
+        </tr>
+        <tr>
+            <td>Giardia</td>
+            <td>{{results.giardia}}</td>
+        </tr>
+        <tr>
+            <td>Beads</td>
+            <td>{{results.beads}}</td>
+        </tr>
+    </table>
+</div>

@@ -20,22 +20,21 @@ async def get_message(id, message):
         await socket_io.emit("message", f"you said {s}")
 
 
+app = web.Application()
+
+# Setup routers
+app.add_routes([web.get("/status", status)])
+app.add_routes([web.static("/assets", "./assets", show_index=True)])
+
+# Setup CORS
+cors = aiohttp_cors.setup(app, defaults={"*": aiohttp_cors.ResourceOptions(),})
+for route in list(app.router.routes()):
+    cors.add(route)
+
+# Bind socket.io endpoints to the app
+socket_io.attach(app)
+
 if __name__ == "__main__":
-    app = web.Application()
-
-    # Setup routers
-    app.add_routes([web.get("/status", status)])
-    app.add_routes([web.static("/assets", "./assets", show_index=True)])
-
-    # Setup CORS
-    cors = aiohttp_cors.setup(
-        app, defaults={"*": aiohttp_cors.ResourceOptions(),}
-    )
-    for route in list(app.router.routes()):
-        cors.add(route)
-    
-    # Bind socket.io endpoints to the app
-    socket_io.attach(app)
 
     # Kick off the game
     web.run_app(app)

@@ -13,6 +13,12 @@ export class DetectionComponent implements OnInit {
   aliveStatus: Observable<any>;
   messages: Observable<any>;
   chatroomForm;
+  results = {
+    total: 3,
+    crypto: 2,
+    giardia: 0,
+    beads: 1
+  }
 
   constructor(private apiService: ApiService, private formBuilder: FormBuilder) {
     this.chatroomForm = this.formBuilder.group({

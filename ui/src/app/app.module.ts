@@ -20,6 +20,7 @@ import { AppComponent } from './app.component';
 import { DetectionComponent } from './detection/detection.component';
 
 import { SocketIoModule, SocketIoConfig } from 'ngx-socket-io';
+import { CapturingDashboardComponent } from './capturing-dashboard/capturing-dashboard.component';
 
 // AoT requires an exported function for factories
 export function HttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
@@ -29,7 +30,7 @@ export function HttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
 const config: SocketIoConfig = { url: 'http://localhost:8080', options: {} }
 
 @NgModule({
-  declarations: [AppComponent, DetectionComponent],
+  declarations: [AppComponent, DetectionComponent, CapturingDashboardComponent],
   imports: [
     BrowserModule,
     ReactiveFormsModule,
