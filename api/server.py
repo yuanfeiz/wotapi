@@ -6,7 +6,7 @@ import aiohttp_cors
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-socket_io = socketio.AsyncServer()
+socket_io = socketio.AsyncServer(logger=True, cors_allowed_origins="*")
 
 
 async def status(request):
@@ -16,7 +16,8 @@ async def status(request):
 @socket_io.on("message")
 async def get_message(id, message):
     logger.debug(f"socketio: get message {message=}, {id=}")
-    await socket_io.emit("message", f"you said {message}")
+    for s in message:
+        await socket_io.emit("message", f"you said {s}")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ApiService } from '../api.service';
 import { Observable } from 'rxjs';
+import { FormBuilder } from '@angular/forms';
 
 @Component({
   selector: 'app-detection',
@@ -10,12 +11,27 @@ import { Observable } from 'rxjs';
 })
 export class DetectionComponent implements OnInit {
   aliveStatus: Observable<any>;
+  messages: Observable<any>;
+  chatroomForm;
 
-  constructor(private apiService: ApiService) { }
+  constructor(private apiService: ApiService, private formBuilder: FormBuilder) {
+    this.chatroomForm = this.formBuilder.group({
+      content: ''
+    });
+  }
 
   ngOnInit() {
     this.aliveStatus = this.apiService.getAliveStatus();
     this.aliveStatus.subscribe((foo) => console.log(foo))
+
+    this.messages = this.apiService.getMessage()
+    this.messages.subscribe((foo) => console.log(`messages ${foo}`))
+  }
+
+  onSubmit(message) {
+    console.log(`Submitted message`, message);
+    this.apiService.sendMessage(message.content)
+    this.chatroomForm.reset();
   }
 
 }

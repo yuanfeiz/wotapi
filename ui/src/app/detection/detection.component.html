@@ -1,1 +1,6 @@
 <p>detection works!</p>
+
+<form (ngSubmit)="onSubmit(chatroomForm.value)" [formGroup]="chatroomForm">
+    <div><label for="content">Message</label><input type="text" id="content" formControlName="content"></div>
+    <button type="submit">Send</button>
+</form>
