@@ -15,6 +15,9 @@ aiohttp = "*"
 python-socketio = "*"
 aiohttp-cors = "*"
 aiohttp-devtools = "*"
+aioify = "*"
+paco = "*"
+aio-pubsub = "*"
 
 [requires]
 python_version = "3.8"
