@@ -1,5 +1,7 @@
 from configparser import ConfigParser
+import logging
 
+# Config
 config = ConfigParser()
 config.read_dict(
     {
@@ -9,7 +11,16 @@ config.read_dict(
             "port": 51234,
             "authkey": "wotwot",
             "status_queue_name": "status_queue",
-            "command_queue_name": "cmd_queue",
+            "cmd_queue_name": "cmd_queue",
         },
     }
 )
+
+
+# Logger
+logger = logging.getLogger('wotapi')
+sh = logging.StreamHandler()
+fmt = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+sh.setFormatter(fmt)
+logger.addHandler(sh)
+logger.setLevel(logging.DEBUG)
