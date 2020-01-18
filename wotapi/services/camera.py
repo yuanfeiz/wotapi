@@ -4,22 +4,9 @@ from numpngw import write_png
 import time
 import rpyc
 import numpy as np
-from aioify import aioify
 import asyncio
-from aio_pubsub.backends.memory import MemoryPubSub, MemorySubscriber
+from wotapi.async_pubsub import AMemoryPubSub
 import paco
-
-
-class AMemorySubscriber(MemorySubscriber):
-    async def __anext__(self):
-        return await self.messages.get()
-
-
-class AMemoryPubSub(MemoryPubSub):
-    async def subscribe(self, channel: str):
-        subscriber = AMemorySubscriber(self.queue_factory)
-        self.subscribers[channel].add(subscriber)
-        return subscriber
 
 
 class CameraQueueManager(BaseManager):
