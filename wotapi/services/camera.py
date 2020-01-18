@@ -58,6 +58,16 @@ class CameraService:
     def get_info(self):
         return self.rpc.getCamera()
 
+    async def get_cmd(self):
+        while True:
+            try:
+                with paco.TimeoutLimit(1):
+                    # item = await paco.wraps(self.cmd_queue.get)()
+                    # yield item
+                    await asyncio.sleep(1.5)
+            except asyncio.TimeoutError as e:
+                yield 'timeout'
+
 
     async def connect(self):
         # Start receiving item from RPC calls

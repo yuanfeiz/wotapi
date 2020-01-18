@@ -43,13 +43,18 @@ async def main():
     info = cs.get_info()
     logger.debug(f"Camera info: {info!s}")
     # Connect w/ the event stream
-    await cs.init_subscribers()
+    # await cs.init_subscribers()
     # Kick off the subscribers
-    await paco.gather(
-        cs.connect(),
-        listen(cs.image_stream, "image_stream"),
-        listen(cs.intensity_stream, "intensity_stream"),
-    )
+    # await paco.gather(
+    #     cs.connect(),
+    #     listen(cs.image_stream, "image_stream"),
+    #     listen(cs.intensity_stream, "intensity_stream"),
+    # )
+    cmd = {'PICH': 1}
+    cs.cmd_queue.put(cmd)
+    await asyncio.sleep(1)
+    async for item in cs.get_cmd():
+        logger.debug(item)
 
 
 paco.run(main())

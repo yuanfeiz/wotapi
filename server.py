@@ -37,7 +37,11 @@ async def foo(sid, data):
 
     async def wuz():
         async for item in cs.intensity_stream:
-            await socket_io.emit("foo", item['stats'])
+            await socket_io.emit("foo", item["stats"])
+
+    async def monitor_cmd_queue():
+        async for cmd in cs.get_cmd():
+            logger.debug(f"got item from cmd queue: {cmd!s}")
 
     t1 = socket_io.start_background_task(bar)
     t2 = socket_io.start_background_task(wuz)
