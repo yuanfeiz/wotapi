@@ -1,9 +1,8 @@
-.vscode/settings.json
-*.pyc
-.DS_Store
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
 
-
-
-ui/dist
-api/assets/*.png
-node_modules
+assets/*.png
+.vscode
+.DS_*
