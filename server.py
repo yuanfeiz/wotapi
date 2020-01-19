@@ -4,6 +4,8 @@ import logging
 import aiohttp_cors
 import asyncio
 from wotapi.services.camera import CameraService
+from shortid import ShortId
+sid = ShortId()
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -19,6 +21,16 @@ async def on_startup(app):
 
 async def status(request):
     return web.json_response({"status": "ok"})
+
+
+async def start_detection(request):
+    json = await request.json()
+    rid = sid.generate()
+    return web.json_response({"status": "ok", "rid": rid, "request_body": json})
+
+async def stop_detection(request):
+    json = await request.json()
+    return web.json_response({'status': 'ok', 'rid': json['rid']})
 
 
 @socket_io.on("message")
@@ -51,11 +63,20 @@ app = web.Application()
 
 # Setup routers
 app.add_routes([web.get("/status", status)])
+app.add_routes([web.post("/detection/start", start_detection)])
+app.add_routes([web.post("/detection/stop", stop_detection)])
 app.add_routes([web.static("/assets", "./assets", show_index=True)])
 app.on_startup.append(on_startup)
 
 # Setup CORS
-cors = aiohttp_cors.setup(app, defaults={"*": aiohttp_cors.ResourceOptions(),})
+cors = aiohttp_cors.setup(
+    app,
+    defaults={
+        "*": aiohttp_cors.ResourceOptions(
+            allow_headers=("X-Requested-With", "Content-Type")
+        ),
+    },
+)
 for route in list(app.router.routes()):
     cors.add(route)
 

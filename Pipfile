@@ -18,6 +18,7 @@ aiohttp-devtools = "*"
 aioify = "*"
 paco = "*"
 aio-pubsub = "*"
+shortid = "*"
 
 [requires]
 python_version = "3.6"
