@@ -34,8 +34,8 @@ async def listen(observable, name):
     """
     async for item in observable:
         logger.debug(f"{name}: get item {item.keys()!s}")
-        if name == 'intensity_stream':
-            logger.debug(item['stats'])
+        if name == "intensity_stream":
+            logger.debug(item["stats"])
 
 
 async def main():
@@ -45,16 +45,26 @@ async def main():
     # Connect w/ the event stream
     # await cs.init_subscribers()
     # Kick off the subscribers
-    # await paco.gather(
-    #     cs.connect(),
-    #     listen(cs.image_stream, "image_stream"),
-    #     listen(cs.intensity_stream, "intensity_stream"),
-    # )
-    cmd = {'PICH': 1}
-    cs.cmd_queue.put(cmd)
-    await asyncio.sleep(1)
-    async for item in cs.get_cmd():
-        logger.debug(item)
+    await paco.gather(
+        cs.connect(),
+        listen(cs.image_stream, "image_stream"),
+        listen(cs.intensity_stream, "intensity_stream"),
+    )
+    # cmd = {'PICH': 1}
+    # cs.cmd_queue.put(cmd)
+    # await asyncio.sleep(1)
+    # async for item in cs.get_cmd():
+    #     logger.debug(item)
 
 
-paco.run(main())
+# paco.run(main())
+if __name__ == "__main__":
+    import time
+
+    cs = CameraService()
+    info = cs.get_info()
+    logger.debug(f"Camera info: {info!s}")
+    while True:
+        s = cs.status_queue.get()
+        print(s)
+        time.sleep(1)

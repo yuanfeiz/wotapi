@@ -19,6 +19,10 @@ aioify = "*"
 paco = "*"
 aio-pubsub = "*"
 shortid = "*"
+simplejson = "*"
+aiofiles = "*"
+dataclasses = "*"
+bson = "*"
 
 [requires]
 python_version = "3.6"

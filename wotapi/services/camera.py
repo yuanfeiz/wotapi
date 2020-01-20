@@ -92,3 +92,9 @@ class CameraService:
         self.image_stream = await self.hub.subscribe("image")
         self.intensity_stream = await self.hub.subscribe("intensity")
 
+if __name__ == "__main__":
+    cs = CameraService()
+    while True:
+        s = cs.status_queue.get()
+        print(s)
+        time.sleep(1)

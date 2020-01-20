@@ -5,6 +5,9 @@ import aiohttp_cors
 import asyncio
 from wotapi.services.camera import CameraService
 from shortid import ShortId
+from wotapi.services.detector import DetectorService
+from wotapi.services.sensor import SensorService
+
 sid = ShortId()
 
 logging.basicConfig(level=logging.DEBUG)
@@ -13,6 +16,10 @@ logger = logging.getLogger(__name__)
 socket_io = socketio.AsyncServer(logger=True, cors_allowed_origins="*")
 
 cs = CameraService()
+ds = DetectorService()
+
+path = "/Users/yuanfei/Projects/siu/wot/wot-core/su/dfppmgui.json"
+ss = SensorService(path, sampling_freq=0.5)
 
 
 async def on_startup(app):
@@ -26,11 +33,20 @@ async def status(request):
 async def start_detection(request):
     json = await request.json()
     rid = sid.generate()
+
+    # Emit progress pct to UI
+    async def emit_progress_events():
+        async for pct in ds.get_progress_events():
+            await socket_io.emit("detection_progress_event", {"rid": rid, "pct": pct})
+
+    socket_io.start_background_task(emit_progress_events)
+
     return web.json_response({"status": "ok", "rid": rid, "request_body": json})
+
 
 async def stop_detection(request):
     json = await request.json()
-    return web.json_response({'status': 'ok', 'rid': json['rid']})
+    return web.json_response({"status": "ok", "rid": json["rid"]})
 
 
 @socket_io.on("message")
@@ -38,6 +54,11 @@ async def get_message(id, message):
     logger.debug(f"socketio: get message message={message}, id={id}")
     for s in message:
         await socket_io.emit("message", f"you said {s}")
+
+
+async def on_sensor_reading():
+    async for reading in ss.on_reading():
+        await socket_io.emit("on_sensor_reading", reading.to_json())
 
 
 @socket_io.on("connect")
@@ -57,6 +78,7 @@ async def foo(sid, data):
 
     t1 = socket_io.start_background_task(bar)
     t2 = socket_io.start_background_task(wuz)
+    t3 = socket_io.start_background_task(on_sensor_reading)
 
 
 app = web.Application()
@@ -86,4 +108,4 @@ socket_io.attach(app)
 if __name__ == "__main__":
 
     # Kick off the game
-    web.run_app(app)
+    web.run_app(app, port=8082)
