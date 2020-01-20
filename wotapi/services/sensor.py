@@ -3,6 +3,7 @@ import aiofiles
 import json
 import asyncio
 from wotapi.utils import logger
+import time
 
 
 class SensorService:
@@ -25,5 +26,5 @@ class SensorService:
         logger.debug(f"Start getting sensor reading: {self.path} {self.sampling_freq}")
         while True:
             values = await self.get_reading_from_filesystem(self.path)
-            yield SensorReading(values=values)
-            await asyncio.sleep(wait_for)
+            yield SensorReading(values=values, timestamp=int(time.time()))
+            await asyncio.sleep(5)

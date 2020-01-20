@@ -59,6 +59,7 @@ async def get_message(id, message):
 async def on_sensor_reading():
     async for reading in ss.on_reading():
         await socket_io.emit("on_sensor_reading", reading.to_json())
+        await asyncio.sleep(5)
 
 
 @socket_io.on("connect")
