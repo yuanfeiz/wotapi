@@ -88,14 +88,23 @@ async def start_auto_mode_task(request):
 
     # Scheduled task id
     tid = None
+    t: asyncio.Task = None
 
     if mode == "single":
-        tid = await auto_service.schedule_run_once()
+        tid, t = await auto_service.schedule_run_once()
     elif mode == "period":
-        tid = await auto_service.schedule_run_period()
+        tid, t = await auto_service.schedule_run_period()
     elif mode == "scheduled":
         times = data["times"]
-        tid = await auto_service.schedule_run_multiple(times)
+        tid, t = await auto_service.schedule_run_multiple(times)
+
+    async def notify_auto_mode_task_done(t):
+        ret = await t
+        logger.debug(f"task {tid} completed: {ret}")
+        await socket_io.emit("on_auto_mode_data_updated", ret)
+
+    logger.debug("created task for emit auto_mode done result")
+    asyncio.create_task(notify_auto_mode_task_done(t))
 
     return web.json_response({"status": "ok", "id": tid})
 
@@ -107,28 +116,8 @@ async def get_auto_mode_results(request):
     It's called on AutoMode page loaded as well as on `onAutoModeDataUpdated` emitted
     """
     now = datetime.datetime.now()
-    return web.json_response(
-        {
-            "past": [
-                {"date": "2020-01-21", "result": "k_full"},
-                {"date": "2020-01-22", "result": "k_none"},
-            ],
-            "today": [
-                {
-                    "startedAt": now.isoformat(),
-                    "values": {"crypto": 3.5, "giardia": 2.8},
-                },
-                {
-                    "startedAt": now.isoformat(),
-                    "values": {"crypto": 3.5, "giardia": 2.8},
-                },
-                {
-                    "startedAt": now.isoformat(),
-                    "values": {"crypto": 3.5, "giardia": 2.8},
-                },
-            ],
-        }
-    )
+    ret = await auto_service.get_results()
+    return web.json_response(ret)
 
 
 @socket_io.on("connect")
@@ -140,10 +129,12 @@ app = web.Application()
 
 # Setup routers
 app.add_routes([web.get("/status", status)])
-app.add_routes([
-    web.get("/auto/results", get_auto_mode_results),
-    web.post("/auto/tasks", start_auto_mode_task)
-])
+app.add_routes(
+    [
+        web.get("/auto/results", get_auto_mode_results),
+        web.post("/auto/tasks", start_auto_mode_task),
+    ]
+)
 app.add_routes([web.post("/detection/start", start_detection)])
 app.add_routes([web.post("/detection/stop", stop_detection)])
 app.add_routes([web.static("/assets", "./assets", show_index=True)])
