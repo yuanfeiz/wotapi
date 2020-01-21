@@ -1,5 +1,6 @@
 from configparser import ConfigParser
 import logging
+from shortid import ShortId
 
 # Config
 config = ConfigParser()
@@ -18,9 +19,13 @@ config.read_dict(
 
 
 # Logger
-logger = logging.getLogger('wotapi')
+logger = logging.getLogger("wotapi")
 sh = logging.StreamHandler()
-fmt = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+fmt = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 sh.setFormatter(fmt)
 logger.addHandler(sh)
 logger.setLevel(logging.DEBUG)
+
+
+# uuid
+id_factory = ShortId()
