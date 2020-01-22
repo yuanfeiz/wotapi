@@ -10,6 +10,7 @@ from wotapi.services import AutoService, DetectorService
 from wotapi.utils import logger
 from wotapi.socket_io import socket_io
 from wotapi.utils import id_factory
+import paco
 
 routes = web.RouteTableDef()
 
@@ -45,11 +46,12 @@ async def start_auto_mode_task(request):
     # Scheduled task id
     tid = None
     t: asyncio.Task = None
+    progress: asyncio.Queue = asyncio.Queue()
 
     if mode == "single":
         tid, t = await auto_service.schedule_run_once()
     elif mode == "period":
-        tid, t = await auto_service.schedule_run_period()
+        tid, t, progress = await auto_service.schedule_run_period()
     elif mode == "scheduled":
         times = data["times"]
         tid, t = await auto_service.schedule_run_multiple(times)
@@ -57,12 +59,33 @@ async def start_auto_mode_task(request):
     async def notify_auto_mode_task_done(t):
         ret = await t
         logger.debug(f"task {tid} completed: {ret}")
-        await socket_io.emit("on_auto_mode_data_updated", ret)
+        await socket_io.emit("on_auto_mode_task_done", ret)
+
+    async def notify_auto_mode_task_updated(q: asyncio.Queue):
+        try:
+            while True:
+                s = await q.get()
+                logger.debug(f"task {tid} got new update: {s}")
+                await socket_io.emit("on_auto_mode_task_updated", s)
+        except asyncio.CancelledError:
+            logger.debug(f'progress for {tid} is canceled')
 
     logger.debug("created task for emit auto_mode done result")
-    asyncio.create_task(notify_auto_mode_task_done(t))
+    asyncio.create_task(
+        # Cancel progress report when task is done(reflecting by t)
+        paco.race(
+            [notify_auto_mode_task_done(t), notify_auto_mode_task_updated(progress)]
+        )
+    )
 
     return web.json_response({"status": "ok", "id": tid})
+
+
+@routes.delete("/auto/tasks/{tid:\w+}")
+async def stop_auto_mode_task(request):
+    tid = request.match_info.get("tid")
+    auto_service.cancel_running_task(tid)
+    return web.json_response({"status": "ok"})
 
 
 @routes.post("/detection/tasks")
@@ -80,8 +103,8 @@ async def start_detection(request):
     return web.json_response({"status": "ok", "rid": rid, "request_body": json})
 
 
-@routes.delete("/detection/tasks")
+@routes.delete("/detection/tasks/{tid:\w+}")
 async def stop_detection(request):
-    json = await request.json()
-    return web.json_response({"status": "ok", "rid": json["rid"]})
+    tid = request.match_info.get("tid")
+    return web.json_response({"status": "ok", "tid": tid})
 
