@@ -1,13 +1,8 @@
 from pathlib import Path
-import logging
 import rpyc
 import time
 import asyncio
 import random
-
-logging.basicConfig(
-    level=logging.DEBUG, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 
 
 class DetectorService:
@@ -30,17 +25,3 @@ class DetectorService:
             yield i
             wait_for = random.random()
             await asyncio.sleep(wait_for)
-
-
-# if __name__ == "__main__":
-    # sample_path = Path("/projects/siu/wot/wotapi/data/")
-
-    # ds = DetectorService()
-
-    # ds.rpc.stopDetector()
-    # ds.rpc.startDetector(str(sample_path), True)
-
-    # while True:
-    #     logging.info(f"{ds.rpc.getPos()=}")
-    #     logging.info(f"{ds.rpc.getResults()=}")
-    #     time.sleep(0.5)

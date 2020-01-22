@@ -55,16 +55,3 @@ async def main():
     # await asyncio.sleep(1)
     # async for item in cs.get_cmd():
     #     logger.debug(item)
-
-
-# paco.run(main())
-if __name__ == "__main__":
-    import time
-
-    cs = CameraService()
-    info = cs.get_info()
-    logger.debug(f"Camera info: {info!s}")
-    while True:
-        s = cs.status_queue.get()
-        print(s)
-        time.sleep(1)

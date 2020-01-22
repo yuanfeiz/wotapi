@@ -28,4 +28,12 @@ logger.setLevel(logging.DEBUG)
 
 
 # uuid
-id_factory = ShortId()
+class IdFactory:
+    def __init__(self):
+        self.f = ShortId()
+
+    def get(self):
+        return self.f.generate()
+
+
+id_factory = IdFactory()

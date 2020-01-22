@@ -22,21 +22,39 @@ class AutoService:
     async def schedule_run_once(self) -> (str, asyncio.Task):
         self.cancel_running_task()
         logger.info(f"Canceled the running task")
-        tid = id_factory.generate()
+        tid = id_factory.get()
         self.running_task = asyncio.create_task(self.run_once(tid))
         logger.info(f"Scheduled run_once")
         return tid, self.running_task
 
     async def schedule_run_period(self) -> (str, asyncio.Task):
-        return id_factory.generate(), self.running_task
+        """
+        Scheduled a new run on the previous run finished.
+        """
+        self.cancel_running_task()
+        logger.info(f"Canceled the running task")
+        tid = id_factory.get()
+        self.running_task = asyncio.create_task(self.run_period(tid))
+        logger.info(f"Scheduled run_period")
+        return id_factory.get(), self.running_task
 
     async def schedule_run_multiple(self, times: int) -> (str, asyncio.Task):
-        return id_factory.generate(), self.running_task
+        return id_factory.get(), self.running_task
 
     def cancel_running_task(self):
         if self.running_task is not None:
             # Cancel the running task
             self.running_task.cancel()
+
+    async def run_period(self, tid):
+        try:
+            idx = 0
+            while True:
+                logger.info(f'Running #{idx} run_period({tid})')
+                await self.run_once(tid)
+                idx += 1
+        except asyncio.CancelledError:
+            logger.info(f'Stopped run_period({tid}), ran for {idx} times')
 
     async def run_once(self, tid):
         started_at = time.time()

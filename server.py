@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import logging
 import time
 
 import aiohttp_cors
@@ -38,7 +37,7 @@ async def on_startup(app):
         """
         async for reading in ss.on_reading():
             await socket_io.emit("on_sensor_reading", reading.to_json())
-            await asyncio.sleep(5)           
+            await asyncio.sleep(5)
 
     t1 = socket_io.start_background_task(bar)
     t2 = socket_io.start_background_task(wuz)
