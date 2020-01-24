@@ -73,12 +73,3 @@ def setup_app(app):
     setup_socket_io(app)
 
     return app
-
-
-app = web.Application()
-setup_app(app)
-
-
-if __name__ == "__main__":
-    # Kick off the game
-    web.run_app(app, port=8082)

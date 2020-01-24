@@ -54,7 +54,7 @@ async def start_auto_mode_task(request):
         tid, t, progress = await auto_service.schedule_run_period()
     elif mode == "scheduled":
         times = data["times"]
-        tid, t = await auto_service.schedule_run_multiple(times)
+        tid, t, progress = await auto_service.schedule_run_multiple(times)
 
     async def notify_auto_mode_task_done(t):
         ret = await t

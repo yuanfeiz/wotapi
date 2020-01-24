@@ -3,6 +3,9 @@ import random
 from ..utils import id_factory, logger
 import time
 import typing
+from datetime import datetime, timedelta
+
+import paco
 
 
 class AutoService:
@@ -40,11 +43,34 @@ class AutoService:
         logger.info(f"Scheduled run_period {self.running_task}")
         return tid, self.running_task, q
 
-    async def schedule_run_multiple(self, times: int) -> (str, asyncio.Task):
-        return id_factory.get(), self.running_task
+    async def schedule_run_multiple(
+        self, times_per_day: int = 8
+    ) -> (str, asyncio.Task):
+        self.cancel_running_task()
+        logger.info(f"Canceled the running task")
+
+
+        # interval_secs = 24 * 60 * 60 / times_per_day
+        interval_secs = times_per_day
+
+        now = datetime.now()
+        tmr = now + timedelta(days=1)
+        midnight = tmr.replace(hour=0, second=0, microsecond=0)
+        defer_secs = (midnight - now).seconds
+        defer_secs = 0
+
+        tid = id_factory.get()
+        q = asyncio.Queue()
+        self.running_task = asyncio.create_task(
+            self.run_multiple(tid, defer_secs, interval_secs, q)
+        )
+        logger.info(
+            f"Scheduled run_multiple {self.running_task}, will be run in {defer_secs}s and interval is {interval_secs}s"
+        )
+        return tid, self.running_task, q
 
     def cancel_running_task(self, tid: str = None):
-        logger.debug(f'Cancelling {self.running_task}')
+        logger.debug(f"Cancelling {self.running_task}")
         if self.running_task is not None:
             # Cancel the running task
             self.running_task.cancel()
@@ -60,6 +86,34 @@ class AutoService:
                 idx += 1
         except asyncio.CancelledError:
             logger.info(f"Stopped run_period({tid}), ran for {idx} times")
+
+    async def run_multiple(
+        self, tid, defer_secs: int, interval_secs: int, queue: asyncio.Queue
+    ):
+        try:
+
+            # TODO: duplicate w/ run_period, requires refactor
+            idx = 0
+
+            async def _run_once():
+                nonlocal idx
+                logger.info(f"Running #{idx} run_multiple({tid})")
+                ret = await self.run_once(tid)
+                await queue.put(ret)
+                idx += 1
+
+            logger.debug(
+                f"Scheduling run_multiple({tid}) in {defer_secs}s, interval is {interval_secs}s"
+            )
+
+            await asyncio.sleep(defer_secs)
+
+            await paco.interval(_run_once, interval=interval_secs)()
+        except asyncio.CancelledError:
+            logger.info(f"Stopped run_multiple({tid}), ran for {idx} times")
+        except Exception as e:
+            logger.error(e)
+            raise e
 
     async def run_once(self, tid):
         try:
@@ -85,8 +139,8 @@ class AutoService:
             return ret
         except asyncio.CancelledError as e:
             logger.info(f"Stopped run_once({tid})")
-            # reraise to propogate this cancel to run_period 
-            raise e 
+            # reraise to propogate this cancel to run_period
+            raise e
 
     async def get_results(self):
         return self.cached_results
