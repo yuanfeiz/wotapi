@@ -23,6 +23,10 @@ simplejson = "*"
 aiofiles = "*"
 pytest-aiohttp = "*"
 pytest-asyncio = "*"
+ptw = "*"
+pytest-watch = "*"
+pytest-mock = "*"
+asyncmock = "*"
 
 [requires]
 python_version = "3.7"

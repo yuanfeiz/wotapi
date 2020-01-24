@@ -1,0 +1,81 @@
+{
+    "V01_STS": false,
+    "V02_STS": false,
+    "V03_STS": false,
+    "V04_STS": false,
+    "V05_STS": false,
+    "V06_STS": false,
+    "V07_STS": false,
+    "V08_STS": false,
+    "V09_STS": false,
+    "V10_STS": false,
+    "V11_STS": false,
+    "V12_STS": false,
+    "V13_STS": false,
+    "V14_STS": false,
+    "V15_STS": false,
+    "V16_STS": false,
+    "PS1": [
+        3.0,
+        true,
+        false
+    ],
+    "PS2": [
+        78.2,
+        false,
+        true
+    ],
+    "PZT_PF": {
+        "FREQ": 0,
+        "PL": 0,
+        "STS": false,
+        "MODE": 0
+    },
+    "PZT_CF": {
+        "FREQ": 0,
+        "PL": 0,
+        "STS": false,
+        "MODE": 0
+    },
+    "PZT_CH": {
+        "FREQ": 0.0,
+        "PL": 0,
+        "STS": false
+    },
+    "LS_SMPL_HL": false,
+    "LS_SMPL_LL": false,
+    "LS_SURF": false,
+    "LS_ALCH": false,
+    "LS_GW": false,
+    "LS_BW": false,
+    "LS_MFC": false,
+    "LASER": {
+        "CT": 0.0,
+        "STS": false
+    },
+    "SP": {
+        "FR": 0,
+        "VOL": 0.0,
+        "MODE": 0,
+        "STS": false
+    },
+    "BPP": {
+        "RPM": 0,
+        "DIR": 0,
+        "STS": false
+    },
+    "SPP": {
+        "RPM": 0,
+        "DIR": 0,
+        "STS": false
+    },
+    "PRCS_MODE": 0,
+    "APRCS_STS": false,
+    "MPRCS_STS": false,
+    "SPRCS_STS": false,
+    "PSTS_HYS": 0,
+    "PSTS_MFS": 0,
+    "PSTS_ICS": 0,
+    "HYS_MODE": 0,
+    "MFS_MODE": 0
+}

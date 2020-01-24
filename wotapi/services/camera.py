@@ -7,6 +7,7 @@ import numpy as np
 import asyncio
 from wotapi.async_pubsub import AMemoryPubSub
 import paco
+import typing
 
 
 class CameraQueueManager(BaseManager):
@@ -51,9 +52,7 @@ class CameraService:
         # Hub for PubSub
         self.hub = AMemoryPubSub(asyncio.Queue)
 
-        # TODO: default to NullSubscriber
-        self.image_stream = None
-        self.intensity_stream = None
+        paco.run(self.init_subscribers())
 
     def get_info(self):
         return self.rpc.getCamera()
@@ -66,25 +65,25 @@ class CameraService:
                     # yield item
                     await asyncio.sleep(1.5)
             except asyncio.TimeoutError as e:
-                yield 'timeout'
-
+                yield "timeout"
 
     async def connect(self):
+        async_get = paco.wraps(self.status_queue.get)
         # Start receiving item from RPC calls
         while True:
-            item = await paco.wraps(self.status_queue.get)()
+            item = await async_get()
 
             # Distribute item according to its topic
             if "CIMG" in item or "TIMG" in item:
                 await self.hub.publish("image", item)
             elif "INT" in item:
-                await self.hub.publish("intensity", {
-                    'samples': item['INT'],
-                    'stats': {
-                        'fps': item['ISTAT'][0],
-                        'lptc': item['ISTAT'][1]
-                    }
-                })
+                await self.hub.publish(
+                    "intensity",
+                    {
+                        "samples": item["INT"],
+                        "stats": {"fps": item["ISTAT"][0], "lptc": item["ISTAT"][1]},
+                    },
+                )
 
             await asyncio.sleep(0.5)
 

@@ -1,9 +1,12 @@
-from wotapi.services.sensor_reading import SensorReading
-import aiofiles
-import json
 import asyncio
-from wotapi.utils import logger
+import json
 import time
+
+import aiofiles
+
+from wotapi.utils import logger
+
+from .sensor_reading import SensorReading
 
 
 class SensorService:
@@ -15,7 +18,8 @@ class SensorService:
 
     async def get_reading_from_filesystem(self, path):
         async with aiofiles.open(path, "r+") as f:
-            content = await f.readline()
+            content = await f.readlines()
+            content = "".join(content)
             return json.loads(content)
 
     async def on_reading(self):
@@ -23,8 +27,10 @@ class SensorService:
         Notify listeners that new reading is available
         """
         wait_for = 1 / self.sampling_freq
-        logger.debug(f"Start getting sensor reading: {self.path} {self.sampling_freq}")
+        logger.debug(
+            f"Start getting sensor reading from {self.path} at {self.sampling_freq}/s"
+        )
         while True:
             values = await self.get_reading_from_filesystem(self.path)
             yield SensorReading(values=values, timestamp=int(time.time()))
-            await asyncio.sleep(5)
+            await asyncio.sleep(wait_for)

@@ -18,8 +18,6 @@ ss = SensorService(path, sampling_freq=0.5)
 
 
 async def on_startup(app):
-    await cs.init_subscribers()
-
     async def bar():
         await cs.connect()
 
@@ -37,7 +35,6 @@ async def on_startup(app):
         """
         async for reading in ss.on_reading():
             await socket_io.emit("on_sensor_reading", reading.to_json())
-            await asyncio.sleep(5)
 
     t1 = socket_io.start_background_task(bar)
     t2 = socket_io.start_background_task(wuz)
