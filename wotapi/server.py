@@ -1,6 +1,4 @@
-import asyncio
-import datetime
-import time
+from pathlib import Path
 
 import aiohttp_cors
 from aiohttp import web
@@ -13,7 +11,8 @@ from wotapi.socket_io import socket_io
 
 cs = CameraService()
 
-path = "/Users/yuanfei/Projects/siu/wot/wot-core/su/dfppmgui.json"
+path = Path(__file__).parent / ".." / "data" / "dfppmgui.json"
+path = str(path.resolve())
 ss = SensorService(path, sampling_freq=0.5)
 
 

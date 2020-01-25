@@ -49,7 +49,6 @@ class AutoService:
         self.cancel_running_task()
         logger.info(f"Canceled the running task")
 
-
         # interval_secs = 24 * 60 * 60 / times_per_day
         interval_secs = times_per_day
 
