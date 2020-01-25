@@ -68,7 +68,7 @@ async def start_auto_mode_task(request):
                 logger.debug(f"task {tid} got new update: {s}")
                 await socket_io.emit("on_auto_mode_task_updated", s)
         except asyncio.CancelledError:
-            logger.debug(f'progress for {tid} is canceled')
+            logger.debug(f"progress for {tid} is canceled")
 
     logger.debug("created task for emit auto_mode done result")
     asyncio.create_task(
@@ -81,11 +81,11 @@ async def start_auto_mode_task(request):
     return web.json_response({"status": "ok", "id": tid})
 
 
-@routes.delete("/auto/tasks/{tid:\w+}")
+@routes.delete(r"/auto/tasks/{tid:\w+}")
 async def stop_auto_mode_task(request):
     tid = request.match_info.get("tid")
     auto_service.cancel_running_task(tid)
-    return web.json_response({"status": "ok"})
+    return web.json_response({"status": "ok", "tid": tid})
 
 
 @routes.post("/detection/tasks")
@@ -103,8 +103,7 @@ async def start_detection(request):
     return web.json_response({"status": "ok", "rid": rid, "request_body": json})
 
 
-@routes.delete("/detection/tasks/{tid:\w+}")
+@routes.delete(r"/detection/tasks/{tid:\w+}")
 async def stop_detection(request):
     tid = request.match_info.get("tid")
     return web.json_response({"status": "ok", "tid": tid})
-

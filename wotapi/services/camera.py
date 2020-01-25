@@ -68,24 +68,29 @@ class CameraService:
                 yield "timeout"
 
     async def connect(self):
-        async_get = paco.wraps(self.status_queue.get)
         # Start receiving item from RPC calls
         while True:
-            item = await async_get()
+            try:
+                item = await self.status_queue.get_nowait()
 
-            # Distribute item according to its topic
-            if "CIMG" in item or "TIMG" in item:
-                await self.hub.publish("image", item)
-            elif "INT" in item:
-                await self.hub.publish(
-                    "intensity",
-                    {
-                        "samples": item["INT"],
-                        "stats": {"fps": item["ISTAT"][0], "lptc": item["ISTAT"][1]},
-                    },
-                )
-
-            await asyncio.sleep(0.5)
+                # Distribute item according to its topic
+                if "CIMG" in item or "TIMG" in item:
+                    await self.hub.publish("image", item)
+                elif "INT" in item:
+                    await self.hub.publish(
+                        "intensity",
+                        {
+                            "samples": item["INT"],
+                            "stats": {
+                                "fps": item["ISTAT"][0],
+                                "lptc": item["ISTAT"][1],
+                            },
+                        },
+                    )
+            except asyncio.QueueEmpty:
+                logger.debug("Waiting for squeue")
+            finally:
+                await asyncio.sleep(0.5)
 
     async def init_subscribers(self):
         self.image_stream = await self.hub.subscribe("image")
