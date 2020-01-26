@@ -1,6 +1,5 @@
 from aiohttp import web
 from wotapi.server import setup_app
-import pytest
 from wotapi.views import auto_service
 
 

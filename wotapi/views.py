@@ -7,15 +7,28 @@ import datetime
 from aiohttp import web
 
 from wotapi.services import AutoService, DetectorService
+from wotapi.services.autoflow_parser import AutoflowParser
 from wotapi.utils import logger
 from wotapi.socket_io import socket_io
 from wotapi.utils import id_factory
 import paco
 
+from configparser import ConfigParser
+
+config = ConfigParser()
+config.read_dict(
+    {
+        "auto": {
+            "start_auto_mode_script_path": "/home/yuanfei/projects/siu/wot-core/mocks/startautoflow.py"
+            # "tests/resources/mock_auto_mode.py"
+        }
+    }
+)
+
 routes = web.RouteTableDef()
 
 # TODO: inject these dependencies
-auto_service = AutoService()
+auto_service = AutoService(config)
 detection_service = DetectorService()
 
 __all__ = ["routes"]
@@ -49,33 +62,34 @@ async def start_auto_mode_task(request):
     progress: asyncio.Queue = asyncio.Queue()
 
     if mode == "single":
-        tid, t = await auto_service.schedule_run_once()
+        tid, t, progress = await auto_service.schedule_run_once()
     elif mode == "period":
         tid, t, progress = await auto_service.schedule_run_period()
     elif mode == "scheduled":
         times = data["times"]
         tid, t, progress = await auto_service.schedule_run_multiple(times)
 
-    async def notify_auto_mode_task_done(t):
+    async def notify_done(t):
         ret = await t
         logger.debug(f"task {tid} completed: {ret}")
         await socket_io.emit("on_auto_mode_task_done", ret)
 
-    async def notify_auto_mode_task_updated(q: asyncio.Queue):
+    async def notify_updated(q: asyncio.Queue):
+        parser = AutoflowParser()
         try:
             while True:
                 s = await q.get()
-                logger.debug(f"task {tid} got new update: {s}")
-                await socket_io.emit("on_auto_mode_task_updated", s)
+                ret = parser.parse(s)
+                logger.debug(f"Task {tid} gets new update: {ret}")
+                if ret is not None and ret["event"] == "progress":
+                    await socket_io.emit("on_auto_mode_task_updated", ret["progress"])
         except asyncio.CancelledError:
             logger.debug(f"progress for {tid} is canceled")
 
-    logger.debug("created task for emit auto_mode done result")
+    logger.debug(f"Subscribe to task({mode}/{tid}) updates: {progress}")
     asyncio.create_task(
         # Cancel progress report when task is done(reflecting by t)
-        paco.race(
-            [notify_auto_mode_task_done(t), notify_auto_mode_task_updated(progress)]
-        )
+        paco.race([notify_done(t), notify_updated(progress)])
     )
 
     return web.json_response({"status": "ok", "id": tid})

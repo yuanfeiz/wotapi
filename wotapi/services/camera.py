@@ -1,5 +1,6 @@
 from wotapi.utils import config, logger
 from multiprocessing.managers import BaseManager
+from multiprocessing import queues
 from numpngw import write_png
 import time
 import rpyc
@@ -87,7 +88,7 @@ class CameraService:
                             },
                         },
                     )
-            except asyncio.QueueEmpty:
+            except queues.Empty:
                 logger.debug("Waiting for squeue")
             finally:
                 await asyncio.sleep(0.5)

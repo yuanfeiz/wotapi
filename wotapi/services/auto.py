@@ -4,15 +4,17 @@ from ..utils import id_factory, logger
 import time
 import typing
 from datetime import datetime, timedelta
+import sys
 
 import paco
 
 
 class AutoService:
-    def __init__(self):
+    def __init__(self, config):
         # At most one running task at a time
         self.running_task: asyncio.Task = None
         self.progress: typing.Dict[str, asyncio.Queue] = {}
+        self.config = config
 
         now = time.time()
         self.cached_results = {
@@ -23,15 +25,16 @@ class AutoService:
             "today": [],
         }
 
-    async def schedule_run_once(self) -> (str, asyncio.Task):
+    async def schedule_run_once(self) -> (str, asyncio.Task, asyncio.Queue):
         self.cancel_running_task()
         logger.info(f"Canceled the running task")
         tid = id_factory.get()
-        self.running_task = asyncio.create_task(self.run_once(tid))
+        q = asyncio.Queue()
+        self.running_task = asyncio.create_task(self.run_once(tid, q))
         logger.info(f"Scheduled run_once {self.running_task}")
-        return tid, self.running_task
+        return tid, self.running_task, q
 
-    async def schedule_run_period(self) -> (str, asyncio.Task):
+    async def schedule_run_period(self) -> (str, asyncio.Task, asyncio.Queue):
         """
         Scheduled a new run on the previous run finished.
         """
@@ -45,7 +48,7 @@ class AutoService:
 
     async def schedule_run_multiple(
         self, times_per_day: int = 8
-    ) -> (str, asyncio.Task):
+    ) -> (str, asyncio.Task, asyncio.Queue):
         self.cancel_running_task()
         logger.info(f"Canceled the running task")
 
@@ -114,13 +117,28 @@ class AutoService:
             logger.error(e)
             raise e
 
-    async def run_once(self, tid):
+    async def _run(self, path, queue: asyncio.Queue):
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable, "-u", path, stdout=asyncio.subprocess.PIPE
+        )
+        logger.debug(f"Start executing {path}")
+        while not proc.stdout.at_eof():
+            data = await proc.stdout.readline()
+            line = data.decode("utf8").strip()
+            logger.debug(f"Read line {line}, put to the queue")
+            await queue.put(line)
+        return proc
+
+    async def run_once(self, tid, queue: asyncio.Queue):
         try:
             started_at = time.time()
-            for i in range(5):
-                logger.info(f"Emitting run_once number: {i}")
-                await asyncio.sleep(1)
+            path = self.config.get("auto", "start_auto_mode_script_path",)
 
+            # Run and wait for the process to finish
+            proc = await self._run(path, queue)
+            await proc.wait()
+
+            # Mocks
             ret = {
                 "id": tid,
                 # TODO: set mode
@@ -137,6 +155,8 @@ class AutoService:
 
             return ret
         except asyncio.CancelledError as e:
+            # Terminate the process if it's cancelled
+            await proc.terminate()
             logger.info(f"Stopped run_once({tid})")
             # reraise to propogate this cancel to run_period
             raise e
