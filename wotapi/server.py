@@ -89,7 +89,7 @@ def setup_app(app, config):
 
     app.add_routes(routes)
     app.add_routes([web.static("/assets", "./assets", show_index=True)])
-    # app.add_routes([web.static("/app", "./assets/app", show_index=True)])
+    app.add_routes([web.static("/app", "../wotapp/dist/", show_index=True)])
     app.on_startup.append(on_startup)
 
     setup_cors(app)
