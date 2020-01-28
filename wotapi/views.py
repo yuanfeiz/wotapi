@@ -6,7 +6,13 @@ import datetime
 
 from aiohttp import web
 
-from wotapi.services import AutoService, DetectorService
+from wotapi.services import (
+    AutoService,
+    DetectorService,
+    SettingService,
+    TaskService,
+    TaskDone,
+)
 from wotapi.services.autoflow_parser import AutoflowParser
 from wotapi.utils import logger
 from wotapi.socket_io import socket_io
@@ -27,8 +33,6 @@ config.read_dict(
 
 routes = web.RouteTableDef()
 
-# TODO: inject these dependencies
-auto_service = AutoService(config)
 detection_service = DetectorService()
 
 __all__ = ["routes"]
@@ -46,7 +50,7 @@ async def get_auto_mode_results(request):
 
     It's called on AutoMode page loaded as well as on `onAutoModeDataUpdated` emitted
     """
-    now = datetime.datetime.now()
+    auto_service: AutoService = request.app["auto_service"]
     ret = await auto_service.get_results()
     return web.json_response(ret)
 
@@ -60,6 +64,8 @@ async def start_auto_mode_task(request):
     tid = None
     t: asyncio.Task = None
     progress: asyncio.Queue = asyncio.Queue()
+
+    auto_service: AutoService = request.app["auto_service"]
 
     if mode == "single":
         tid, t, progress = await auto_service.schedule_run_once()
@@ -98,6 +104,7 @@ async def start_auto_mode_task(request):
 @routes.delete(r"/auto/tasks/{tid:\w+}")
 async def stop_auto_mode_task(request):
     tid = request.match_info.get("tid")
+    auto_service: AutoService = request.app["auto_service"]
     auto_service.cancel_running_task(tid)
     return web.json_response({"status": "ok", "tid": tid})
 
@@ -121,3 +128,41 @@ async def start_detection(request):
 async def stop_detection(request):
     tid = request.match_info.get("tid")
     return web.json_response({"status": "ok", "tid": tid})
+
+
+@routes.get("/settings")
+async def get_settings(request):
+    setting_service: SettingService = request.app["setting_service"]
+    return web.json_response(
+        {
+            "settings": await setting_service.get(),
+            "meta": {
+                "path": "/home/yuanfei/projects/siu/wotapi/tests/resources/config.json"
+            },
+        }
+    )
+
+
+@routes.post("/concentration/tasks")
+async def submit_concentration_task(request):
+    payload = await request.json()
+    action = payload["action"]
+    task_service: TaskService = request.app["task_service"]
+    queue = asyncio.Queue()
+
+    tid = await task_service.submit(action, queue)
+
+    async def _on_progress():
+        while True:
+            item = await queue.get()
+            logger.debug(f"Get task({tid}) progress item: {item}")
+            if item == TaskDone:
+                await socket_io.emit("task_done", {"id": tid})
+                return
+            else:
+                await socket_io.emit("task_updated", {"id": tid, "msg": item})
+
+    socket_io.start_background_task(_on_progress)
+
+    return web.json_response({"id": tid})
+

@@ -6,11 +6,11 @@
   "V05_STS": false,
   "V06_STS": false,
   "V07_STS": false,
-  "V08_STS": false,
+  "V08_STS": true,
   "V09_STS": false,
   "V10_STS": false,
   "V11_STS": false,
-  "V12_STS": false,
+  "V12_STS": true,
   "V13_STS": false,
   "V14_STS": false,
   "V15_STS": false,
@@ -42,7 +42,7 @@
     "ALCH": true,
     "GW": true,
     "BW": true,
-    "MFC": false,
+    "FC": false,
     "BLEACH": true
   },
   "LASER": {
@@ -56,8 +56,8 @@
     "STS": true
   },
   "BPP": {
-    "RPM": 0,
-    "DIR": 0,
+    "RPM": 42,
+    "DIR": 1,
     "STS": false
   },
   "SPP": {
@@ -75,7 +75,7 @@
   "HYS_MODE": 0,
   "MFS_MODE": 0,
   "HI": {
-    "HYS": false,
-    "MFS": false
+    "HYS": true,
+    "MFS": true
   }
 }

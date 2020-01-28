@@ -53,8 +53,6 @@ class CameraService:
         # Hub for PubSub
         self.hub = AMemoryPubSub(asyncio.Queue)
 
-        paco.run(self.init_subscribers())
-
     def get_info(self):
         return self.rpc.getCamera()
 

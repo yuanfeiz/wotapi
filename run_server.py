@@ -1,9 +1,12 @@
 from aiohttp import web
 from wotapi.server import setup_app
+from configparser import ConfigParser
 
 
 def create_app():
-    return setup_app(web.Application())
+    config = ConfigParser()
+    config.read("config.prod.ini")
+    return setup_app(web.Application(), config)
 
 
 if __name__ == "__main__":
