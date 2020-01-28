@@ -33,8 +33,6 @@ config.read_dict(
 
 routes = web.RouteTableDef()
 
-detection_service = DetectorService()
-
 __all__ = ["routes"]
 
 
@@ -113,6 +111,7 @@ async def stop_auto_mode_task(request):
 async def start_detection(request):
     json = await request.json()
     rid = id_factory.generate()
+    detection_service: DetectorService = request.app['detection_service']
 
     # Emit progress pct to UI
     async def emit_progress_events():

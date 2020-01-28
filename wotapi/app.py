@@ -60,4 +60,4 @@ def test_detector():
 
 
 if __name__ == "__main__":
-    test_status_queue()
+    test_detector()

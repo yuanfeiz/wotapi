@@ -9,6 +9,7 @@ import asyncio
 from wotapi.async_pubsub import AMemoryPubSub
 import paco
 import typing
+import time
 
 
 class CameraQueueManager(BaseManager):
@@ -70,7 +71,7 @@ class CameraService:
         # Start receiving item from RPC calls
         while True:
             try:
-                item = await self.status_queue.get_nowait()
+                item = self.status_queue.get_nowait()
 
                 # Distribute item according to its topic
                 if "CIMG" in item or "TIMG" in item:

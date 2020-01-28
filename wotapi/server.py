@@ -75,7 +75,10 @@ def setup_services(app, config):
     path = Path(__file__).parent / ".." / "data" / "dfppmgui.json"
     path = str(path.resolve())
     app["sensor_service"] = SensorService(path, sampling_freq=0.5)
-    app["task_service"] = TaskService()
+
+
+    path = Path(config.get('task_service', 'path'))
+    app["task_service"] = TaskService(path)
 
     return app
 
