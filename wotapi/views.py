@@ -111,7 +111,7 @@ async def stop_auto_mode_task(request):
 async def start_detection(request):
     json = await request.json()
     rid = id_factory.generate()
-    detection_service: DetectorService = request.app['detection_service']
+    detection_service: DetectorService = request.app["detection_service"]
 
     # Emit progress pct to UI
     async def emit_progress_events():
@@ -158,10 +158,26 @@ async def submit_concentration_task(request):
             if item == TaskDone:
                 await socket_io.emit("task_done", {"id": tid})
                 return
+            elif isinstance(item, asyncio.CancelledError):
+                # Terminate the queue if task is abort.
+                await socket_io.emit("task_abort", {"id": tid, "msg": str(item)})
+                return
             else:
                 await socket_io.emit("task_updated", {"id": tid, "msg": item})
+        logger.debug(f"Stop listen to _on_progress messages")
 
     socket_io.start_background_task(_on_progress)
 
     return web.json_response({"id": tid})
+
+
+@routes.delete(r"/concentration/tasks/{tid}")
+async def cancel_concentration_task(request):
+    tid = request.match_info.get("tid")
+    task_service: TaskService = request.app["task_service"]
+    try:
+        await task_service.cancel(tid)
+        return web.json_response({"status": "ok"})
+    except Exception as e:
+        return web.json_response({"status": "error", "msg": str(e)}, status=500)
 
