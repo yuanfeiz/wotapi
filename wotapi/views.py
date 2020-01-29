@@ -3,6 +3,8 @@ HTTP endpoints
 """
 import asyncio
 import datetime
+import io
+from PIL import Image
 
 from aiohttp import web
 
@@ -12,12 +14,15 @@ from wotapi.services import (
     SettingService,
     TaskService,
     TaskDone,
+    CameraService,
 )
+from wotapi.services import image
 from wotapi.services.autoflow_parser import AutoflowParser
 from wotapi.utils import logger
 from wotapi.socket_io import socket_io
 from wotapi.utils import id_factory
 import paco
+from aiohttp import MultipartWriter
 
 from configparser import ConfigParser
 
@@ -182,7 +187,43 @@ async def cancel_concentration_task(request):
         return web.json_response({"status": "error", "msg": str(e)}, status=500)
 
 
-@routes.get("/capturing/feeds/timg")
-async def timg_feed(request):
-    pass
+@routes.get(r"/capturing/feeds/{img_type}")
+async def timg_feed(request) -> web.StreamResponse:
+    my_boundary = "some-boundary"
+    response = web.StreamResponse(
+        status=200,
+        reason="OK",
+        headers={
+            "Content-Type": "multipart/x-mixed-replace;boundary=--%s" % my_boundary
+        },
+    )
+    await response.prepare(request)
+
+    csrv: CameraService = request.app["camera_service"]
+    img_stream = await csrv.hub.subscribe("image")
+    img_type = request.match_info.get("img_type").upper()
+    logger.debug(f"Subscribe to image stream {img_type=}")
+
+    async for item in img_stream:
+        if img_type not in item:
+            logger.debug(f"Skip image item: {img_type=} {item.keys()}")
+            continue
+
+        with MultipartWriter("image/jpeg", boundary=my_boundary) as mpwriter:
+            # result, encimg = cv2.imencode('.jpg', frame, encode_param)
+            # data = encimg.tostring()
+
+            img_bytes = item[img_type]
+            img = image.frombuffer(img_bytes)
+            buf = io.BytesIO()
+            img.save(buf, "JPEG")
+            mpwriter.append(buf.getvalue(), {"Content-Type": "image/jpeg"})
+            # mpwriter.append(byte_im, {"Content-Type": "image/jpeg"})
+            await mpwriter.write(response, close_boundary=False)
+            logger.debug(f"Append response")
+        await response.drain()
+
+    logger.debug("Finished streaming")
+
+    return response
 
