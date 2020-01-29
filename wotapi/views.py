@@ -181,3 +181,8 @@ async def cancel_concentration_task(request):
     except Exception as e:
         return web.json_response({"status": "error", "msg": str(e)}, status=500)
 
+
+@routes.get("/capturing/feeds/timg")
+async def timg_feed(request):
+    pass
+

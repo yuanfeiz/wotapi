@@ -3,6 +3,7 @@ from numpngw import write_png
 import time
 import rpyc
 import numpy as np
+from wotapi.services.image import ImageService
 
 
 class Camera:
@@ -37,6 +38,8 @@ def test_status_queue():
     status_queue = queue_mgt.status_queue()
     cmd_queue = queue_mgt.cmd_queue()
 
+    srv = ImageService()
+
     c = Camera()
     camera_info = c.get_info()
     h, w = camera_info["H"], camera_info["W"]
@@ -45,11 +48,13 @@ def test_status_queue():
         print(s.keys())
         millisecs = int(time.time() * 1000)
         if "CIMG" in s:
-            img = bytes_to_image(s["CIMG"], h, w)
-            write_png(f"assets/img-{millisecs}.png", img)
+            img = srv.frombuffer(s["CIMG"], h, w)
+            with open(f"assets/cimg-{millisecs}.png", "wb+") as f:
+                img.save(f, format="png")
         elif "TIMG" in s:
-            img = bytes_to_image(s["TIMG"], h, w)
-            write_png(f"assets/img-{millisecs}.png", img)
+            img = srv.frombuffer(s["TIMG"], h, w)
+            with open(f"assets/timg-{millisecs}.png", "wb+") as f:
+                img.save(f, format="png")
 
         time.sleep(0.1)
 

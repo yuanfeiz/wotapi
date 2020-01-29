@@ -76,8 +76,7 @@ def setup_services(app, config):
     path = str(path.resolve())
     app["sensor_service"] = SensorService(path, sampling_freq=0.5)
 
-
-    path = Path(config.get('task_service', 'path'))
+    path = Path(config.get("task_service", "path"))
     app["task_service"] = TaskService(path)
 
     return app
@@ -90,6 +89,7 @@ def setup_app(app, config):
     app.add_routes(routes)
     app.add_routes([web.static("/assets", "./assets", show_index=True)])
     app.add_routes([web.static("/app", "../wotapp/dist/", show_index=True)])
+    app.add_routes([web.static("/feeds", "../wot-core/images/", show_index=True)])
     app.on_startup.append(on_startup)
 
     setup_cors(app)

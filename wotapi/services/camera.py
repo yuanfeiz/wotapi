@@ -72,6 +72,7 @@ class CameraService:
         while True:
             try:
                 item = self.status_queue.get_nowait()
+                logger.debug(f"Get squeue item: {item.keys()=}")
 
                 # Distribute item according to its topic
                 if "CIMG" in item or "TIMG" in item:

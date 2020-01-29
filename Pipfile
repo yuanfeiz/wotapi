@@ -29,6 +29,7 @@ ptw = "*"
 pytest-watch = "*"
 pytest-mock = "*"
 asyncmock = "*"
+pillow = "*"
 
 [requires]
 python_version = "3.8"
