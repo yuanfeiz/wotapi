@@ -9,7 +9,7 @@
   "V08_STS": false,
   "V09_STS": false,
   "V10_STS": false,
-  "V11_STS": false,
+  "V11_STS": true,
   "V12_STS": false,
   "V13_STS": false,
   "V14_STS": false,
@@ -27,9 +27,9 @@
     "SURF2": false,
     "ALCH": false,
     "GW": false,
-    "BW": false,
+    "BW": true,
     "MFC": false,
-    "BLEACH": false
+    "BLEACH": true
   },
   "LASER": { "CT": 0.0, "STS": false },
   "SP": { "FR": 0, "VOL": 0.0, "MODE": 0, "STS": false },

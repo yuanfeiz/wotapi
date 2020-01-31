@@ -4,3 +4,4 @@ from .detector import DetectorService
 from .camera import CameraService
 from .setting import SettingService
 from .task import TaskService, TaskDone
+from .machine import MachineService

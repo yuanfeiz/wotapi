@@ -9,6 +9,7 @@ from wotapi.services import (
     CameraService,
     SettingService,
     TaskService,
+    MachineService,
 )
 from wotapi.utils import logger
 from wotapi.views import routes
@@ -98,8 +99,11 @@ def setup_services(app, config):
         app["task_service"], app["setting_service"], config
     )
 
-    path = Path(__file__).parent / ".." / "data" / "dfppmgui.json"
-    path = str(path.resolve())
+    app["machine_service"] = MachineService(
+        app["task_service"], app["setting_service"]
+    )
+
+    path = config.get("sensor_service", "PATH")
     app["sensor_service"] = SensorService(path, sampling_freq=0.5)
 
     return app

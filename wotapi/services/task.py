@@ -17,7 +17,13 @@ class TaskService:
     ):
         try:
             script_path = f"{self.root_path}/{filename}"
-            args = " ".join([f"--{k}={v}" for k, v in kwargs.items()])
+            args = ""
+            if kwargs.get("__SINGLE"):
+                l = kwargs.pop("__SINGLE")
+                args = " ".join([str(v) for v in l])
+            else:
+                args = " ".join([f"--{k}={v}" for k, v in kwargs.items()])
+
             cmd = f"python -u {script_path} {args}"
             proc = await asyncio.create_subprocess_shell(
                 cmd, stdout=asyncio.subprocess.PIPE
@@ -35,7 +41,9 @@ class TaskService:
                 await queue.put(TaskDone)
             return await proc.wait()
         except asyncio.CancelledError as e:
-            logger.debug(f"Cancel script executing {script_path}, pid={proc.pid}")
+            logger.debug(
+                f"Cancel script executing {script_path}, pid={proc.pid}"
+            )
             # Return the CancelledError to terminal the queue
             if queue:
                 await queue.put(e)

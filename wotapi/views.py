@@ -15,6 +15,7 @@ from wotapi.services import (
     TaskService,
     TaskDone,
     CameraService,
+    MachineService,
 )
 from wotapi.services import image
 from wotapi.services.autoflow_parser import AutoflowParser
@@ -279,15 +280,36 @@ async def cancel_capturing_task(request):
     )
 
 
-@routes.post("/capturing/tasks/laser")
-async def start_laser(request):
-    camera_service: CameraService = request.app["camera_service"]
+async def _operate_machine(request: web.Request, coro) -> web.Response:
+    task_service: TaskService = request.app["task_service"]
 
-    tid, queue = (1, None)
+    tid = await coro
 
     logger.debug("Waiting for task to finish")
-    task_service: TaskService = request.app["task_service"]
     await task_service.running_tasks[tid]
 
     return web.json_response({"id": tid, "status": "done"})
+
+
+@routes.post("/capturing/tasks/laser")
+async def start_laser(request):
+    machine_service: MachineService = request.app["machine_service"]
+    return await _operate_machine(request, machine_service.start_laser())
+
+
+@routes.post("/capturing/tasks/pzt")
+async def start_cpzt(request):
+    machine_service: MachineService = request.app["machine_service"]
+    return await _operate_machine(request, machine_service.start_pzt())
+
+
+@routes.post("/capturing/tasks/syringe_pump")
+async def control_syringe_pump(request):
+    machine_service: MachineService = request.app["machine_service"]
+    action = (await request.json())["action"]
+    assert action in ["infuse", "withdraw", "stop"], f"{action=} is invalid"
+
+    return await _operate_machine(
+        request, machine_service.control_syringe_pump(action)
+    )
 

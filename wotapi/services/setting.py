@@ -13,7 +13,9 @@ class SettingService:
         if isinstance(path, str):
             path = Path(path)
         self.path = path
-        logger.debug(f"Initialized SettingService with config path: {self.path}")
+        logger.debug(
+            f"Initialized SettingService with config path: {self.path}"
+        )
         # The lock currently doesn't work as load and dump
         # are both blocking operation
         self.lock = asyncio.Lock()
@@ -31,5 +33,5 @@ class SettingService:
     async def update(self, o: dict):
         async with self.lock:
             with self.path.open("w+") as f:
-                json.dump(o, f)
+                json.dump(o, f, indent=2)
                 logger.debug(f"Updated config: {o}")
