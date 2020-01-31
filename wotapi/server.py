@@ -31,7 +31,6 @@ async def on_startup(app):
     async def sub_intensity_feed():
         async for item in camera_service.intensity_stream:
             a = item["samples"]
-            logger.debug(len(a))
             await socket_io.emit("on_intensity_updated", item)
 
     async def sub_camera_info_feed():
@@ -96,7 +95,7 @@ def setup_services(app, config):
 
     # Inject task_service and setting_service into the CameraService
     app["camera_service"] = CameraService(
-        app["task_service"], app["setting_service"]
+        app["task_service"], app["setting_service"], config
     )
 
     path = Path(__file__).parent / ".." / "data" / "dfppmgui.json"

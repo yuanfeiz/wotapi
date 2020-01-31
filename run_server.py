@@ -5,7 +5,7 @@ from configparser import ConfigParser
 
 def create_app():
     config = ConfigParser()
-    config.read("config.prod.ini")
+    config.read("config.dev.ini")
     return setup_app(web.Application(), config)
 
 

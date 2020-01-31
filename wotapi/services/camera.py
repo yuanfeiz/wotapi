@@ -1,21 +1,19 @@
 import asyncio
-import time
+import logging
 import typing
 from multiprocessing import queues
 from multiprocessing.managers import BaseManager
-import logging
 
 import numpy as np
-import paco
 import rpyc
-from numpngw import write_png
+from json_tricks import dumps
 from tenacity import after_log, retry, retry_if_exception_type, wait_exponential
 
 from wotapi.async_pubsub import AMemoryPubSub
-from wotapi.utils import config, logger
-from json_tricks import dumps
-from .task import TaskService
+from wotapi.utils import logger
+
 from .setting import SettingService
+from .task import TaskService
 
 
 class CameraQueueManager(BaseManager):
@@ -29,11 +27,11 @@ class CameraService:
     """
 
     def __init__(
-        self, task_service: TaskService, setting_service: SettingService
+        self, task_service: TaskService, setting_service: SettingService, config
     ):
         # TODO: inject rpc and queue_mgr
         rpc_config = config["camera_rpc"]
-        rpc_host, rpc_port = rpc_config.get("host"), rpc_config.get("port")
+        rpc_host, rpc_port = rpc_config.get("host"), rpc_config.getint("port")
 
         queue_config = config["camera_queue"]
         queue_host, queue_port, authkey = (
@@ -66,6 +64,7 @@ class CameraService:
 
         self.task_service = task_service
         self.setting_service = setting_service
+        self.config = config
 
     def get_info(self):
         return self.rpc.getCamera()
@@ -106,9 +105,11 @@ class CameraService:
                     },
                 )
             elif "SPATH" in item:
-                await self.hub.publish("results_path", item)
+                await self.hub.publish("results_path", item['SPATH'])
 
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(
+                self.config.getfloat("camera_rpc", "QUEUE_CONSUME_RATE")
+            )
 
     async def emit_command_queue_item(self):
         while True:
@@ -160,4 +161,3 @@ class CameraService:
 
     async def update_intensity_levels(self, low: int, high: int):
         return await self.put_item(self.cmd_queue, {"PICH": [low, high]})
-

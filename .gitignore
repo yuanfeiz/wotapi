@@ -6,3 +6,4 @@ __pycache__/
 assets/*.png
 .vscode
 .DS_*
+config.prod.ini
