@@ -12,4 +12,4 @@ def create_app():
 if __name__ == "__main__":
     # Kick off the game
     app = create_app()
-    web.run_app(app, port=8082)
+    web.run_app(app, port=8085)
