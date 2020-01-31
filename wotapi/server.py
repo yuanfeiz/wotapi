@@ -5,7 +5,6 @@ from aiohttp import web
 
 from wotapi.services import (
     AutoService,
-    DetectorService,
     SensorService,
     CameraService,
     SettingService,
@@ -14,6 +13,7 @@ from wotapi.services import (
 from wotapi.utils import logger
 from wotapi.views import routes
 from wotapi.socket_io import socket_io
+import asyncio
 
 
 async def on_startup(app):
@@ -22,27 +22,48 @@ async def on_startup(app):
 
     sensor_service: SensorService = app["sensor_service"]
 
-    async def bar():
-        await camera_service.connect()
+    async def start_feeds():
+        await asyncio.gather(
+            camera_service.emit_status_queue_item(),
+            camera_service.emit_command_queue_item(),
+        )
 
-    async def wuz():
+    async def sub_intensity_feed():
         async for item in camera_service.intensity_stream:
-            await socket_io.emit("foo", item["stats"])
+            a = item["samples"]
+            logger.debug(len(a))
+            await socket_io.emit("on_intensity_updated", item)
 
-    async def monitor_cmd_queue():
-        async for cmd in camera_service.get_cmd():
-            logger.debug(f"got item from cmd queue: {cmd!s}")
+    async def sub_camera_info_feed():
+        feed = await camera_service.hub.subscribe("camera_info")
+        async for item in feed:
+            logger.debug(item)
 
-    async def on_sensor_reading():
+    async def sub_results_path_feed():
+        feed = await camera_service.hub.subscribe("results_path")
+        async for item in feed:
+            logger.debug(item)
+            await socket_io.emit("results_path", item)
+
+    async def sub_sensor_reading_feed():
         """
         This should be called for only once
         """
         async for reading in sensor_service.on_reading():
             await socket_io.emit("on_sensor_reading", reading.to_json())
 
-    socket_io.start_background_task(bar)
-    socket_io.start_background_task(wuz)
-    socket_io.start_background_task(on_sensor_reading)
+    asyncio.create_task(start_feeds())
+    asyncio.create_task(
+        asyncio.wait(
+            {
+                sub_camera_info_feed(),
+                sub_intensity_feed(),
+                sub_sensor_reading_feed(),
+                sub_results_path_feed(),
+            },
+            return_when=asyncio.FIRST_EXCEPTION,
+        )
+    )
 
 
 # Setup CORS
@@ -70,14 +91,17 @@ def setup_services(app, config):
     path = Path(config.get("setting_service", "path"))
     app["setting_service"] = SettingService(path)
 
-    app["camera_service"] = CameraService()
+    path = Path(config.get("task_service", "path"))
+    app["task_service"] = TaskService(path)
+
+    # Inject task_service and setting_service into the CameraService
+    app["camera_service"] = CameraService(
+        app["task_service"], app["setting_service"]
+    )
 
     path = Path(__file__).parent / ".." / "data" / "dfppmgui.json"
     path = str(path.resolve())
     app["sensor_service"] = SensorService(path, sampling_freq=0.5)
-
-    path = Path(config.get("task_service", "path"))
-    app["task_service"] = TaskService(path)
 
     return app
 
@@ -89,7 +113,9 @@ def setup_app(app, config):
     app.add_routes(routes)
     app.add_routes([web.static("/assets", "./assets", show_index=True)])
     app.add_routes([web.static("/app", "../wotapp/dist/", show_index=True)])
-    app.add_routes([web.static("/feeds", "../wot-core/images/", show_index=True)])
+    app.add_routes(
+        [web.static("/feeds", "../wot-core/images/", show_index=True)]
+    )
     app.on_startup.append(on_startup)
 
     setup_cors(app)

@@ -1,5 +1,6 @@
 from aio_pubsub.backends.memory import MemoryPubSub, MemorySubscriber
 
+
 class AMemorySubscriber(MemorySubscriber):
     async def __anext__(self):
         return await self.messages.get()

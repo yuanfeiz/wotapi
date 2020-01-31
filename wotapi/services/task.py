@@ -12,13 +12,17 @@ class TaskService:
         self.root_path = root_path
         self.running_tasks: Mapping[str, asyncio.Task] = {}
 
-    async def _run_script(self, filename: str, queue: asyncio.Queue = None):
+    async def _run_script(
+        self, filename: str, queue: asyncio.Queue = None, /, **kwargs
+    ):
         try:
             script_path = f"{self.root_path}/{filename}"
+            args = " ".join([f"--{k}={v}" for k, v in kwargs.items()])
+            cmd = f"python -u {script_path} {args}"
             proc = await asyncio.create_subprocess_shell(
-                f"python -u {script_path}", stdout=asyncio.subprocess.PIPE
+                cmd, stdout=asyncio.subprocess.PIPE
             )
-            logger.debug(f"Start executing {script_path}")
+            logger.debug(f"Start executing {cmd}")
 
             while not proc.stdout.at_eof():
                 data = await proc.stdout.readline()
@@ -37,14 +41,17 @@ class TaskService:
                 await queue.put(e)
             proc.terminate()
 
-    async def submit(self, action: str, queue: asyncio.Queue = None) -> str:
+    async def submit(
+        self, action: str, queue: asyncio.Queue = None, /, **kwargs
+    ) -> str:
+        logger.debug(f"Accept submitted task: {action=}, {kwargs=}")
         tid = id_factory.get()
         filename = f"{action}.py"
-        task = asyncio.create_task(self._run_script(filename, queue))
+        task = asyncio.create_task(self._run_script(filename, queue, **kwargs))
         self.running_tasks[tid] = task
         return tid
 
-    async def cancel(self, tid: str):
+    async def cancel(self, tid: str, stop_script_filename="stop"):
         """
         Cancel the running task.
 
@@ -57,7 +64,7 @@ class TaskService:
         logger.debug(f"Force cancelling task {tid}")
         task.cancel()
 
-        tid = await self.submit("stop")
+        tid = await self.submit(stop_script_filename)
         # Wait for the stop script to finish
         exit_code = await self.running_tasks[tid]
         if exit_code != 0:

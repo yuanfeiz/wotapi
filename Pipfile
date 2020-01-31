@@ -30,6 +30,8 @@ pytest-watch = "*"
 pytest-mock = "*"
 asyncmock = "*"
 pillow = "*"
+tenacity = "*"
+json-tricks = "*"
 
 [requires]
 python_version = "3.8"

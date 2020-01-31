@@ -1,15 +1,21 @@
-from wotapi.utils import config, logger
-from multiprocessing.managers import BaseManager
-from multiprocessing import queues
-from numpngw import write_png
-import time
-import rpyc
-import numpy as np
 import asyncio
-from wotapi.async_pubsub import AMemoryPubSub
-import paco
-import typing
 import time
+import typing
+from multiprocessing import queues
+from multiprocessing.managers import BaseManager
+import logging
+
+import numpy as np
+import paco
+import rpyc
+from numpngw import write_png
+from tenacity import after_log, retry, retry_if_exception_type, wait_exponential
+
+from wotapi.async_pubsub import AMemoryPubSub
+from wotapi.utils import config, logger
+from json_tricks import dumps
+from .task import TaskService
+from .setting import SettingService
 
 
 class CameraQueueManager(BaseManager):
@@ -22,7 +28,9 @@ class CameraService:
     This service relies on a running detection.x64 
     """
 
-    def __init__(self):
+    def __init__(
+        self, task_service: TaskService, setting_service: SettingService
+    ):
         # TODO: inject rpc and queue_mgr
         rpc_config = config["camera_rpc"]
         rpc_host, rpc_port = rpc_config.get("host"), rpc_config.get("port")
@@ -44,7 +52,9 @@ class CameraService:
         CameraQueueManager.register(status_queue_name)
         CameraQueueManager.register(cmd_queue_name)
         # TODO: make queue_mgr a local variable
-        self.queue_mgr = CameraQueueManager((queue_host, queue_port), authkey=authkey)
+        self.queue_mgr = CameraQueueManager(
+            (queue_host, queue_port), authkey=authkey
+        )
         self.queue_mgr.connect()
         logger.info(f"Queues connected! ({queue_host}:{queue_port})")
 
@@ -54,45 +64,100 @@ class CameraService:
         # Hub for PubSub
         self.hub = AMemoryPubSub(asyncio.Queue)
 
+        self.task_service = task_service
+        self.setting_service = setting_service
+
     def get_info(self):
         return self.rpc.getCamera()
 
-    async def get_cmd(self):
-        while True:
-            try:
-                with paco.TimeoutLimit(1):
-                    # item = await paco.wraps(self.cmd_queue.get)()
-                    # yield item
-                    await asyncio.sleep(1.5)
-            except asyncio.TimeoutError as e:
-                yield "timeout"
+    @retry(
+        wait=wait_exponential(max=60),
+        retry=retry_if_exception_type(queues.Empty),
+        after=after_log(logger, logging.DEBUG),
+    )
+    async def get_item(self, queue: queues.Queue):
+        return queue.get_nowait()
 
-    async def connect(self):
+    @retry(
+        wait=wait_exponential(max=60), after=after_log(logger, logging.DEBUG),
+    )
+    async def put_item(self, queue: queues.Queue, item):
+        logger.debug(f"send command: {item=}")
+        return queue.put_nowait(item)
+
+    async def emit_status_queue_item(self):
         # Start receiving item from RPC calls
         while True:
-            try:
-                item = self.status_queue.get_nowait()
-                logger.debug(f"Get squeue item: {item.keys()=}")
+            item = await self.get_item(self.status_queue)
+            logger.debug(f"Get squeue item: keys={item.keys()}")
 
-                # Distribute item according to its topic
-                if "CIMG" in item or "TIMG" in item:
-                    await self.hub.publish("image", item)
-                elif "INT" in item:
-                    await self.hub.publish(
-                        "intensity",
-                        {
-                            "samples": item["INT"],
-                            "stats": {
-                                "fps": item["ISTAT"][0],
-                                "lptc": item["ISTAT"][1],
-                            },
+            # Distribute item according to its topic
+            if "CIMG" in item or "TIMG" in item:
+                await self.hub.publish("image", item)
+            elif "INT" in item:
+                await self.hub.publish(
+                    "intensity",
+                    {
+                        "samples": item["INT"][0],
+                        "stats": {
+                            "fps": item["ISTAT"][0],
+                            "lptc": item["ISTAT"][1],
                         },
-                    )
-            except queues.Empty:
-                logger.debug("Waiting for squeue")
-            finally:
-                await asyncio.sleep(0.5)
+                    },
+                )
+            elif "SPATH" in item:
+                await self.hub.publish("results_path", item)
+
+            await asyncio.sleep(0.01)
+
+    async def emit_command_queue_item(self):
+        while True:
+            item = await self.get_item(self.cmd_queue)
+            logger.debug(f"Get cqueue item: keys={item.keys()}")
+            await self.hub.publish("camera_info", item)
+            await asyncio.sleep(0.5)
 
     async def init_subscribers(self):
         self.image_stream = await self.hub.subscribe("image")
         self.intensity_stream = await self.hub.subscribe("intensity")
+
+    async def start_capturing(self) -> (str, asyncio.Queue):
+        # Step 1: send item to cqueue requesting start capturing
+        settings = await self.setting_service.get()
+        csettings = settings.get("K_CAPTURING")
+        payload = {
+            "PSTART": [
+                csettings.get("RECORD_RAW"),
+                csettings.get("RECORD_PARTICLE"),
+            ]
+        }
+        await self.put_item(self.cmd_queue, payload)
+        logger.debug("Requested cqueue to start capturing")
+
+        script_args = {
+            "CPZT": ",".join([str(v) for v in settings.get("CPZT")]),
+            "LASER": settings.get("LASER"),
+            "SPV": ",".join([str(v) for v in settings.get("SPV")]),
+        }
+
+        logger.debug(f"Run startcap script with arguments: {script_args=}")
+
+        # Step 2: run the script to start as well
+        queue = asyncio.Queue()
+        return (
+            await self.task_service.submit("startcap", queue, **script_args),
+            queue,
+        )
+
+    async def stop_capturing(self, tid: str):
+        payload = {"PSTOP": 1}
+        await self.put_item(self.cmd_queue, payload)
+        logger.debug("Requested cqueue to stop capturing")
+
+        exit_code = await self.task_service.cancel(tid, "stopcap")
+        logger.debug(f"Ran stopcap script: {exit_code=}")
+        return exit_code
+
+    async def update_intensity_levels(self, low: int, high: int):
+        return await self.put_item(self.cmd_queue, {"PICH": [low, high]})
+
