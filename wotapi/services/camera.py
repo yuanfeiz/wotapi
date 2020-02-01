@@ -120,7 +120,9 @@ class CameraService:
             await asyncio.sleep(0.5)
 
     async def init_subscribers(self):
-        self.image_stream = await self.hub.subscribe("image")
+        """
+        Ensure only subscribe stream should be initialized here
+        """
         self.intensity_stream = await self.hub.subscribe("intensity")
 
     async def start_capturing(self) -> (str, asyncio.Queue):
