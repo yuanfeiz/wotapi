@@ -32,9 +32,6 @@ asyncmock = "*"
 pillow = "*"
 tenacity = "*"
 json-tricks = "*"
-memory-profiler = "*"
-matplotlib = "*"
-pympler = "*"
 
 [requires]
 python_version = "3.8"
