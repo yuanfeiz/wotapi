@@ -22,6 +22,9 @@ async def on_startup(app):
     await camera_service.init_subscribers()
 
     sensor_service: SensorService = app["sensor_service"]
+    app['camera_feed'] = None
+    app['results_path_feed'] = None
+
 
     async def start_feeds():
         await asyncio.gather(
@@ -36,11 +39,13 @@ async def on_startup(app):
 
     async def sub_camera_info_feed():
         feed = await camera_service.hub.subscribe("camera_info")
+        app['camera_feed'] = feed
         async for item in feed:
             logger.debug(item)
 
     async def sub_results_path_feed():
         feed = await camera_service.hub.subscribe("results_path")
+        app['results_path_feed'] = feed
         async for item in feed:
             logger.debug(item)
             await socket_io.emit("results_path", item)
