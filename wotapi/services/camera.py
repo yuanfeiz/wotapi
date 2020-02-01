@@ -147,7 +147,7 @@ class CameraService:
         # Step 2: run the script to start as well
         queue = asyncio.Queue()
         return (
-            await self.task_service.submit("startcap", queue, **script_args),
+            await self.task_service.submit("mfs_pd", queue, **script_args),
             queue,
         )
 
@@ -156,7 +156,7 @@ class CameraService:
         await self.put_item(self.cmd_queue, payload)
         logger.info("Requested cqueue to stop capturing")
 
-        exit_code = await self.task_service.cancel(tid, "stopcap")
+        exit_code = await self.task_service.cancel(tid, "mfs_stop")
         logger.debug(f"Ran stopcap script: {exit_code=}")
         return exit_code
 

@@ -33,3 +33,8 @@ class MachineService:
             args["__SINGLE"].extend(settings["SPV"])
         tid = await self.task_service.submit("spcontrol", **args)
         return tid
+
+    async def clean(self, action: str) -> str:
+        queue = asyncio.Queue()
+        tid = await self.task_service.submit(action, queue)
+        return tid, queue

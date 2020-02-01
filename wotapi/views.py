@@ -265,15 +265,6 @@ async def timg_feed(request) -> web.StreamResponse:
     return response
 
 
-@routes.post("/capturing/tasks/capturing")
-async def submit_capturing_task(request):
-    camera_service: CameraService = request.app["camera_service"]
-    tid, queue = await camera_service.start_capturing()
-    task = asyncio.create_task(_on_progress(tid, queue), name="start_capturing")
-    logger.debug(f"Created {task=}")
-    return web.json_response({"id": tid})
-
-
 @routes.delete(r"/capturing/tasks/capturing/{tid}")
 async def cancel_capturing_task(request):
     tid = request.match_info.get("tid")
@@ -324,3 +315,24 @@ async def reset_particle_count(request):
     await camera_service.reset_particle_count()
     tid = id_factory.get()
     return web.json_response({"id": tid, "status": "done"})
+
+
+@routes.post("/capturing/tasks/capturing")
+async def submit_capturing_task(request):
+    camera_service: CameraService = request.app["camera_service"]
+    tid, queue = await camera_service.start_capturing()
+    task = asyncio.create_task(_on_progress(tid, queue), name="start_capturing")
+    logger.debug(f"Created {task=}")
+    return web.json_response({"id": tid})
+
+
+@routes.post(r"/capturing/tasks/{action}")
+async def submit_clean_task(request):
+    machine_service: MachineService = request.app["machine_service"]
+    action = request.match_info["action"]
+    assert action in ["chipclean_surf", "chipclean_bleach", "chipclean_bs"]
+    tid, queue = await machine_service.clean(action)
+    task = asyncio.create_task(_on_progress(tid, queue), name=action)
+    logger.debug(f"Created {task=}")
+    return web.json_response({"id": tid})
+
