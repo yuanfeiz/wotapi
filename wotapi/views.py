@@ -317,3 +317,10 @@ async def control_syringe_pump(request):
         request, machine_service.control_syringe_pump(action)
     )
 
+
+@routes.post("/capturing/tasks/reset_particle_count")
+async def reset_particle_count(request):
+    camera_service: CameraService = request.app["camera_service"]
+    await camera_service.reset_particle_count()
+    tid = id_factory.get()
+    return web.json_response({"id": tid, "status": "done"})

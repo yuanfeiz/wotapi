@@ -181,3 +181,5 @@ class CameraService:
         self.rpc.setGain(adjusted_gain)
         logger.info(f"Updated camera {gain=} {adjusted_gain=}")
 
+    async def reset_particle_count(self):
+        await self.put_item(self.cmd_queue, {"RSCNT": 1})
