@@ -218,9 +218,20 @@ async def cancel_concentration_task(request):
         return web.json_response({"status": "error", "msg": str(e)}, status=500)
 
 
+async def write_new_parts(data, boundary, response):
+    with MultipartWriter("image/jpeg", boundary=boundary) as mpwriter:
+
+        mpwriter.append(data, {"Content-Type": "image/jpeg"})
+        # mpwriter.append(byte_im, {"Content-Type": "image/jpeg"})
+        await mpwriter.write(response, close_boundary=False)
+        logger.debug(f"Append response")
+    await response.drain()
+
+
 @routes.get(r"/capturing/feeds/{img_type}")
 async def timg_feed(request) -> web.StreamResponse:
     my_boundary = "some-boundary"
+
     response = web.StreamResponse(
         status=200,
         reason="OK",
@@ -236,27 +247,20 @@ async def timg_feed(request) -> web.StreamResponse:
     img_type = request.match_info.get("img_type").upper()
     logger.debug(f"Subscribe to image stream {img_type=}")
 
+    await write_new_parts(
+        image.img_to_bytes(image.blank_image()), my_boundary, response
+    )
+
     try:
         async for item in img_stream:
             if img_type not in item:
                 logger.debug(f"Skip image item: {img_type=} {item.keys()}")
                 continue
 
-            with MultipartWriter(
-                "image/jpeg", boundary=my_boundary
-            ) as mpwriter:
-                # result, encimg = cv2.imencode('.jpg', frame, encode_param)
-                # data = encimg.tostring()
-
-                img_bytes = item[img_type]
-                img = image.frombuffer(img_bytes)
-                buf = io.BytesIO()
-                img.save(buf, "JPEG")
-                mpwriter.append(buf.getvalue(), {"Content-Type": "image/jpeg"})
-                # mpwriter.append(byte_im, {"Content-Type": "image/jpeg"})
-                await mpwriter.write(response, close_boundary=False)
-                logger.debug(f"Append response")
-            await response.drain()
+            img = image.frombuffer(item[img_type])
+            await write_new_parts(
+                image.img_to_bytes(img), my_boundary, response
+            )
     except ConnectionResetError:
         logger.debug(f"Ignored premature client disconnection")
 
