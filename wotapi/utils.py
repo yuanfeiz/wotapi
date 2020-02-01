@@ -7,7 +7,7 @@ sh = logging.StreamHandler()
 fmt = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 sh.setFormatter(fmt)
 logger.addHandler(sh)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 # uuid

@@ -2,9 +2,7 @@
 HTTP endpoints
 """
 import asyncio
-import datetime
 import io
-from PIL import Image
 
 from aiohttp import web
 
@@ -180,11 +178,17 @@ async def update_settings(request):
     setting_service: SettingService = request.app["setting_service"]
     await setting_service.update(new_settings)
 
+    camera_service: CameraService = request.app["camera_service"]
     if updated_key == "ITH":
         # Request detector to update its parameters
-        camera_service: CameraService = request.app["camera_service"]
         params = new_settings["ITH"]
         await camera_service.update_intensity_levels(*params)
+    elif updated_key == "CAMERA.EXP":
+        new_value = new_settings["CAMERA"]["EXP"][1]
+        await camera_service.update_camera_exp(new_value)
+    elif updated_key == "CAMERA.GAIN":
+        new_value = new_settings["CAMERA"]["GAIN"][1]
+        await camera_service.update_camera_gain(new_value)
 
     return web.json_response({"status": "ok", "settings": new_settings})
 

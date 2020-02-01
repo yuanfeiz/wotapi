@@ -31,7 +31,7 @@
     "MFC": false,
     "BLEACH": true
   },
-  "LASER": { "CT": 0.0, "STS": false },
+  "LASER": { "CT": 0.0, "STS": true },
   "SP": { "FR": 0, "VOL": 0.0, "MODE": 0, "STS": false },
   "BPP": { "RPM": 0, "DIR": 0, "STS": false },
   "SPP": { "RPM": 0, "DIR": 0, "STS": false },

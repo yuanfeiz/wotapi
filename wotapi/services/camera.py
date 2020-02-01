@@ -4,6 +4,7 @@ import typing
 from multiprocessing import queues
 from multiprocessing.managers import BaseManager
 
+import math
 import numpy as np
 import rpyc
 from json_tricks import dumps
@@ -105,7 +106,7 @@ class CameraService:
                     },
                 )
             elif "SPATH" in item:
-                await self.hub.publish("results_path", item['SPATH'])
+                await self.hub.publish("results_path", item["SPATH"])
 
             await asyncio.sleep(
                 self.config.getfloat("camera_rpc", "QUEUE_CONSUME_RATE")
@@ -153,11 +154,30 @@ class CameraService:
     async def stop_capturing(self, tid: str):
         payload = {"PSTOP": 1}
         await self.put_item(self.cmd_queue, payload)
-        logger.debug("Requested cqueue to stop capturing")
+        logger.info("Requested cqueue to stop capturing")
 
         exit_code = await self.task_service.cancel(tid, "stopcap")
         logger.debug(f"Ran stopcap script: {exit_code=}")
         return exit_code
 
     async def update_intensity_levels(self, low: int, high: int):
+        logger.info(f"Updated intensity levels: {low=} {high=}")
         return await self.put_item(self.cmd_queue, {"PICH": [low, high]})
+
+    async def update_camera_exp(self, exposure: float):
+        min_val, max_val = self.get_info()["EXP"]
+        dv = (math.log(max_val) - math.log(min_val)) / 99.0
+        adjusted_exposure = math.exp(math.log(min_val) + (dv * exposure))
+
+        adjusted_exposure = min(int(adjusted_exposure), max_val)
+        self.rpc.setExp(adjusted_exposure)
+        logger.info(f"Updated camera {exposure=} {adjusted_exposure=}")
+
+    async def update_camera_gain(self, gain: float):
+        min_val, max_val = self.get_info()["GAIN"]
+
+        adjusted_gain = gain * (max_val - min_val) / 99.0 + min_val
+        adjusted_gain = min(adjusted_gain, max_val)
+        self.rpc.setGain(adjusted_gain)
+        logger.info(f"Updated camera {gain=} {adjusted_gain=}")
+

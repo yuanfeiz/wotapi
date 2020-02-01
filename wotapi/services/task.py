@@ -1,7 +1,6 @@
 import asyncio
 from pathlib import Path
 from wotapi.utils import id_factory, logger
-import sys
 from typing import Mapping
 
 TaskDone = "--END--"
