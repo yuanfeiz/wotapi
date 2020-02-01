@@ -1,6 +1,7 @@
 import logging
 from shortid import ShortId
 
+
 # Logger
 logger = logging.getLogger("wotapi")
 sh = logging.StreamHandler()
@@ -10,6 +11,7 @@ logger.addHandler(sh)
 logger.setLevel(logging.INFO)
 
 
+logging.getLogger("socketio.server").setLevel(logging.ERROR)
 # uuid
 class IdFactory:
     def __init__(self):

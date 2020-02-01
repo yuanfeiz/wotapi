@@ -46,7 +46,7 @@ class CameraService:
         )
 
         self.rpc = rpyc.connect(rpc_host, rpc_port).root
-        logger.info(f"RPC connected! ({rpc_host}:{rpc_port})")
+        logger.info(f"RPC connected! ({rpc_host}:{rpc_port})", stack_info=True)
 
         CameraQueueManager.register(status_queue_name)
         CameraQueueManager.register(cmd_queue_name)

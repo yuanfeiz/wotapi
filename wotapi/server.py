@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+import guppy
 
 import aiohttp_cors
 from aiohttp import web
@@ -16,6 +17,11 @@ from wotapi.socket_io import socket_io
 from wotapi.utils import logger
 from wotapi.views import routes
 from pympler import muppy, summary
+import objgraph
+import logging
+
+
+hp = guppy.hpy()
 
 
 async def on_startup(app):
@@ -30,11 +36,23 @@ async def on_startup(app):
         try:
             await asyncio.sleep(10)
             all_objects = muppy.get_objects()
+            logger.info(len(all_objects))
             sum1 = summary.summarize(all_objects)
             # Prints out a summary of the large objects
             summary.print_(sum1)
         except Exception as e:
             logger.error(e)
+
+    async def show_growth():
+        while True:
+            objgraph.show_growth()
+            muppy.print_summary()
+            logger.info("heap total")
+            heap = hp.heap()
+            references = heap[0].byvia
+            logger.info(references)
+
+            await asyncio.sleep(60)
 
     async def start_feeds():
         await asyncio.gather(
@@ -79,7 +97,7 @@ async def on_startup(app):
             return_when=asyncio.FIRST_EXCEPTION,
         )
     )
-    asyncio.create_task(sample_objects())
+    asyncio.create_task(show_growth())
 
 
 # Setup CORS

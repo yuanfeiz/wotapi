@@ -35,6 +35,8 @@ json-tricks = "*"
 memory-profiler = "*"
 matplotlib = "*"
 pympler = "*"
+objgraph = "*"
+guppy3 = "*"
 
 [requires]
 python_version = "3.8"
