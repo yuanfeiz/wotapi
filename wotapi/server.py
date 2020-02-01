@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 
 import aiohttp_cors
@@ -5,16 +6,16 @@ from aiohttp import web
 
 from wotapi.services import (
     AutoService,
-    SensorService,
     CameraService,
+    MachineService,
+    SensorService,
     SettingService,
     TaskService,
-    MachineService,
 )
+from wotapi.socket_io import socket_io
 from wotapi.utils import logger
 from wotapi.views import routes
-from wotapi.socket_io import socket_io
-import asyncio
+from pympler import muppy, summary
 
 
 async def on_startup(app):
@@ -22,9 +23,18 @@ async def on_startup(app):
     await camera_service.init_subscribers()
 
     sensor_service: SensorService = app["sensor_service"]
-    app['camera_feed'] = None
-    app['results_path_feed'] = None
+    app["camera_feed"] = None
+    app["results_path_feed"] = None
 
+    async def sample_objects():
+        try:
+            await asyncio.sleep(10)
+            all_objects = muppy.get_objects()
+            sum1 = summary.summarize(all_objects)
+            # Prints out a summary of the large objects
+            summary.print_(sum1)
+        except Exception as e:
+            logger.error(e)
 
     async def start_feeds():
         await asyncio.gather(
@@ -39,13 +49,13 @@ async def on_startup(app):
 
     async def sub_camera_info_feed():
         feed = await camera_service.hub.subscribe("camera_info")
-        app['camera_feed'] = feed
+        app["camera_feed"] = feed
         async for item in feed:
             logger.debug(item)
 
     async def sub_results_path_feed():
         feed = await camera_service.hub.subscribe("results_path")
-        app['results_path_feed'] = feed
+        app["results_path_feed"] = feed
         async for item in feed:
             logger.debug(item)
             await socket_io.emit("results_path", item)
@@ -69,6 +79,7 @@ async def on_startup(app):
             return_when=asyncio.FIRST_EXCEPTION,
         )
     )
+    asyncio.create_task(sample_objects())
 
 
 # Setup CORS
