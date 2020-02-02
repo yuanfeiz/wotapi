@@ -11,6 +11,7 @@ from wotapi.services import (
     SensorService,
     SettingService,
     TaskService,
+    DetectorService,
 )
 from wotapi.socket_io import socket_io
 from wotapi.utils import logger
@@ -33,7 +34,6 @@ async def on_startup(app):
 
     async def sub_intensity_feed():
         async for item in camera_service.intensity_stream:
-            a = item["samples"]
             await socket_io.emit("on_intensity_updated", item)
 
     async def sub_camera_info_feed():
@@ -90,7 +90,8 @@ def setup_socket_io(app):
 
 
 def setup_services(app, config):
-    app["auto_service"] = AutoService(config)
+
+    app["detector_service"] = DetectorService(config)
 
     path = Path(config.get("setting_service", "path"))
     app["setting_service"] = SettingService(path)
@@ -100,9 +101,15 @@ def setup_services(app, config):
 
     # Inject task_service and setting_service into the CameraService
     app["camera_service"] = CameraService(
-        app["task_service"], app["setting_service"], config
+        app["task_service"],
+        app["setting_service"],
+        app["detector_service"],
+        config,
     )
 
+    app["auto_service"] = AutoService(
+        config, app["task_service"], app["camera_service"]
+    )
     app["machine_service"] = MachineService(
         app["task_service"], app["setting_service"]
     )

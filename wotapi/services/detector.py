@@ -3,6 +3,7 @@ import rpyc
 import time
 import asyncio
 import random
+from wotapi.utils import logger
 
 
 class DetectorService:
@@ -10,18 +11,34 @@ class DetectorService:
     This service relie on a running cgdetector.x64
     """
 
-    def __init__(self, ip="localhost", port=51237):
-        config = {"allow_pickle": True}
-        self.rpc = rpyc.connect(ip, port, config=config).root
+    def __init__(self, config):
+        self.config = config["detector_service"]
 
-    def get_info(self):
-        return self.rpc.getCamera()
+        # Setup the connection
+        self._conn = rpyc.connect(
+            self.config["HOST"],
+            self.config.getint("PORT"),
+            config={
+                "allow_pickle": True,
+                "sync_request_timeout": self.config.getint(
+                    "REQUEST_TIMEOUT", fallback=5
+                ),
+            },
+        )
 
-    async def get_progress_events(self):
-        """
-        Progress events for the detection procedure
-        """
-        for i in range(100):
-            yield i
-            wait_for = random.random()
-            await asyncio.sleep(wait_for)
+        # Check if detector is connected
+        if self.connected():
+            logger.info(
+                f'Detector connected! ({self.config["HOST"]}:{self.config["PORT"]})'
+            )
+
+        self.rpc = self._conn.root
+
+    def connected(self):
+        try:
+            # ping the service and wait for at most 1s
+            self._conn.ping(timeout=1)
+            return True
+        except Exception as e:
+            logger.error(f"failed to connect to the detector: {e}")
+            return False

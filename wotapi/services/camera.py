@@ -1,13 +1,10 @@
 import asyncio
 import logging
-import typing
 from multiprocessing import queues
 from multiprocessing.managers import BaseManager
 
 import math
-import numpy as np
 import rpyc
-from json_tricks import dumps
 from tenacity import after_log, retry, retry_if_exception_type, wait_exponential
 
 from wotapi.async_pubsub import AMemoryPubSub
@@ -15,6 +12,7 @@ from wotapi.utils import logger
 
 from .setting import SettingService
 from .task import TaskService
+from .detector import DetectorService
 
 
 class CameraQueueManager(BaseManager):
@@ -28,7 +26,11 @@ class CameraService:
     """
 
     def __init__(
-        self, task_service: TaskService, setting_service: SettingService, config
+        self,
+        task_service: TaskService,
+        setting_service: SettingService,
+        detector_service: DetectorService,
+        config,
     ):
         # TODO: inject rpc and queue_mgr
         rpc_config = config["camera_rpc"]
@@ -65,6 +67,7 @@ class CameraService:
 
         self.task_service = task_service
         self.setting_service = setting_service
+        self.detector_service = detector_service
         self.config = config
 
     def get_info(self):
@@ -125,9 +128,7 @@ class CameraService:
         """
         self.intensity_stream = await self.hub.subscribe("intensity")
 
-    async def start_capturing(self) -> (str, asyncio.Queue):
-        # Step 1: send item to cqueue requesting start capturing
-        settings = await self.setting_service.get()
+    async def initiate_capturing(self, settings):
         csettings = settings.get("K_CAPTURING")
         payload = {
             "PSTART": [
@@ -138,27 +139,92 @@ class CameraService:
         await self.put_item(self.cmd_queue, payload)
         logger.debug("Requested cqueue to start capturing")
 
+    async def initiate_capturing_script(
+        self, settings, script_name: str, queue: asyncio.Queue
+    ):
+        # Step 2: run the script to start as well
         script_args = {
             "CPZT": ",".join([str(v) for v in settings.get("CPZT")]),
             "LASER": settings.get("LASER"),
             "SPV": ",".join([str(v) for v in settings.get("SPV")]),
         }
 
-        logger.debug(f"Run startcap script with arguments: {script_args=}")
+        logger.debug(f"Run {script_name} with arguments: {script_args=}")
+        return await self.task_service.submit(script_name, queue, **script_args)
 
-        # Step 2: run the script to start as well
+    async def start_auto_capturing(self, queue: asyncio.Queue):
+        """
+        Run the auto mode 
+
+        @todo: move to auto service
+        """
+        settings = await self.setting_service.get()
+        try:
+            await self.initiate_capturing(settings)
+
+            async def noop():
+                pass
+
+            classify_coro = noop()
+            detector_service_connected = self.detector_service.connected()
+            if detector_service_connected:
+                logger.info("detector is connected, start classifying images")
+                # Detector is working, wait for the path to return
+                # and start detecting
+
+                # Get the first result path
+                sub = await self.hub.subscribe("results_path")
+                path = None
+                monitor_mode = True
+                async for _path in sub:
+                    path = _path
+                    break
+
+                # Start detector
+                classify_coro = self.detector_service.start(path, monitor_mode)
+
+            # submit the task, this doesn't block
+            tid = await self.initiate_capturing_script(
+                settings, "startautoflow", queue
+            )
+
+            # clean up
+            # wait for the tasks to be done
+            classify_result, script_result = await asyncio.gather(
+                classify_coro, self.task_service.running_tasks[tid]
+            )
+            logger.info(
+                f"completed classification and the script: {classify_result=}, {script_result=}"
+            )
+        except Exception as e:
+            logger.error(f"failed to clean up auto mode: {e}")
+        finally:
+            # shutdown camera
+            await asyncio.sleep(5)
+            await self.stop_capturing(tid, stop_script_name="stopautoflow")
+
+            # shutdown detector
+            if detector_service_connected:
+                await asyncio.sleep(5)
+                await self.detector_service.stop()
+                logger.info(f"shutdown detector")
+
+    async def start_manual_capturing(self) -> (str, asyncio.Queue):
+        settings = await self.setting_service.get()
         queue = asyncio.Queue()
-        return (
-            await self.task_service.submit("mfs_pd", queue, **script_args),
-            queue,
-        )
 
-    async def stop_capturing(self, tid: str):
+        # Step 1: send item to cqueue requesting start capturing
+        await self.initiate_capturing(settings)
+        tid = await self.initiate_capturing_script(settings, "mfs_pd", queue)
+
+        return tid, queue
+
+    async def stop_capturing(self, tid: str, stop_script_name="mfs_stop"):
         payload = {"PSTOP": 1}
         await self.put_item(self.cmd_queue, payload)
         logger.info("Requested cqueue to stop capturing")
 
-        exit_code = await self.task_service.cancel(tid, "mfs_stop")
+        exit_code = await self.task_service.cancel(tid, stop_script_filename)
         logger.debug(f"Ran stopcap script: {exit_code=}")
         return exit_code
 

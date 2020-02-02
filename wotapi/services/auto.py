@@ -1,22 +1,23 @@
 import asyncio
-import random
 from ..utils import id_factory, logger
-import time
 import typing
 from datetime import datetime, timedelta
-import sys
+from .task import TaskService
+from .camera import CameraService
+from ..async_pubsub import AMemoryPubSub, AMemorySubscriber
 
 import paco
 
 
 class AutoService:
-    def __init__(self, config):
+    def __init__(
+        self, config, task_service: TaskService, camera_service: CameraService
+    ):
         # At most one running task at a time
         self.running_task: asyncio.Task = None
         self.progress: typing.Dict[str, asyncio.Queue] = {}
         self.config = config
 
-        now = time.time()
         self.cached_results = {
             "past": [
                 {"date": "2020-01-21", "result": "k_full"},
@@ -25,51 +26,60 @@ class AutoService:
             "today": [],
         }
 
-    async def schedule_run_once(self) -> (str, asyncio.Task, asyncio.Queue):
-        self.cancel_running_task()
-        logger.info(f"Canceled the running task")
-        tid = id_factory.get()
-        q = asyncio.Queue()
-        self.running_task = asyncio.create_task(self.run_once(tid, q))
-        logger.info(f"Scheduled run_once {self.running_task}")
-        return tid, self.running_task, q
+        self.task_service = task_service
+        self.camera_service = camera_service
 
-    async def schedule_run_period(self) -> (str, asyncio.Task, asyncio.Queue):
-        """
-        Scheduled a new run on the previous run finished.
-        """
-        self.cancel_running_task()
-        logger.info(f"Canceled the running task")
-        tid = id_factory.get()
-        q = asyncio.Queue()
-        self.running_task = asyncio.create_task(self.run_period(tid, q))
-        logger.info(f"Scheduled run_period {self.running_task}")
-        return tid, self.running_task, q
+        self.hub = AMemoryPubSub(asyncio.Queue)
 
-    async def schedule_run_multiple(
-        self, times_per_day: int = 8
-    ) -> (str, asyncio.Task, asyncio.Queue):
-        self.cancel_running_task()
-        logger.info(f"Canceled the running task")
-
-        # interval_secs = 24 * 60 * 60 / times_per_day
-        interval_secs = times_per_day
+    async def calc_interval_and_defer_secs(times_per_day: int = 8):
+        interval_secs = 24 * 60 * 60 / times_per_day
 
         now = datetime.now()
         tmr = now + timedelta(days=1)
         midnight = tmr.replace(hour=0, second=0, microsecond=0)
         defer_secs = (midnight - now).seconds
-        defer_secs = 0
 
+        return interval_secs, defer_secs
+
+    async def schedule(
+        self, mode: str, **kwargs
+    ) -> (str, AMemorySubscriber, AMemorySubscriber):
+        # do argument checks
+        assert mode in ["once", "period", "multiple"]
+        self.cancel_running_task()
+
+        # assign tid for the child scheduler
         tid = id_factory.get()
-        q = asyncio.Queue()
-        self.running_task = asyncio.create_task(
-            self.run_multiple(tid, defer_secs, interval_secs, q)
-        )
-        logger.info(
-            f"Scheduled run_multiple {self.running_task}, will be run in {defer_secs}s and interval is {interval_secs}s"
-        )
-        return tid, self.running_task, q
+        # for emitting scheduler events eg. "new batch starts"
+        scheduler_sub = self.hub.subscribe("c_scheduler")
+        # for emitting worker events
+        worker_sub = self.hub.subscribe("c_worker")
+
+        if mode == "once":
+            self.running_task = self.task_service.create_task(
+                self.run_once(), tid
+            )
+            logger.info(f"Scheduled autorun {mode=} {self.running_task}")
+        elif mode == "period":
+            self.running_task = self.task_service.create_task(
+                self.run_period(), tid
+            )
+            logger.info(f"Scheduled autorun {mode=} {self.running_task}")
+        elif mode == "multiple":
+            times = kwargs["times"]
+            interval_secs, defer_secs = self.calc_interval_and_defer_secs(
+                times
+            )
+            self.running_task = self.task_service.create_task(
+                self.run_multiple(defer_secs, interval_secs), tid
+            )
+            logger.info(
+                f"Scheduled autorun {mode=} {self.running_task}, "
+                f"will be run in {defer_secs}s and interval is "
+                f"{interval_secs}s",
+            )
+
+        return tid, scheduler_sub, worker_sub
 
     def cancel_running_task(self, tid: str = None):
         logger.debug(f"Cancelling {self.running_task}")
@@ -77,90 +87,96 @@ class AutoService:
             # Cancel the running task
             self.running_task.cancel()
 
-    async def run_period(self, tid, queue: asyncio.Queue):
+    async def run_period(self):
+        tid = asyncio.current_task().get_name()
+
+        def event(event, idx):
+            return {"id": tid, "event": event, "mode": "period", "batch": idx}
+
         try:
             idx = 0
+            await self.hub.publish("c_scheduler", event("start", idx))
             while True:
                 logger.info(f"Running #{idx} run_period({tid})")
-                ret = await self.run_once(tid)
-                # TODO: check memory leaks
-                await queue.put(ret)
+                await self._run("period", idx)
+
+                # increase run no.
                 idx += 1
         except asyncio.CancelledError:
+            await self.hub.publish("c_scheduler", event("finish", idx))
             logger.info(f"Stopped run_period({tid}), ran for {idx} times")
 
-    async def run_multiple(
-        self, tid, defer_secs: int, interval_secs: int, queue: asyncio.Queue
-    ):
-        try:
+    async def run_multiple(self, defer_secs: int, interval_secs: int):
+        tid = asyncio.current_task().get_name()
 
+        def event(event, idx):
+            return {
+                "id": tid,
+                "event": event,
+                "mode": "multiple",
+                "batch": idx,
+            }
+
+        try:
             # TODO: duplicate w/ run_period, requires refactor
             idx = 0
+            await self.hub.publish("c_scheduler", event("start", idx))
 
             async def _run_once():
+                # start run
                 nonlocal idx
                 logger.info(f"Running #{idx} run_multiple({tid})")
-                ret = await self.run_once(tid)
-                await queue.put(ret)
+                await self._run("multiple", idx)
+
+                # finish
                 idx += 1
 
             logger.debug(
-                f"Scheduling run_multiple({tid}) in {defer_secs}s, interval is {interval_secs}s"
+                f"Scheduling run_multiple({tid}) in {defer_secs}s, "
+                f"interval is {interval_secs}s"
             )
 
             await asyncio.sleep(defer_secs)
 
             await paco.interval(_run_once, interval=interval_secs)()
         except asyncio.CancelledError:
+            await self.hub.publish("c_scheduler", event("finish", idx))
             logger.info(f"Stopped run_multiple({tid}), ran for {idx} times")
         except Exception as e:
             logger.error(e)
             raise e
 
-    async def _run(self, path, queue: asyncio.Queue):
-        proc = await asyncio.create_subprocess_exec(
-            sys.executable, "-u", path, stdout=asyncio.subprocess.PIPE
-        )
-        logger.debug(f"Start executing {path}")
-        while not proc.stdout.at_eof():
-            data = await proc.stdout.readline()
-            line = data.decode("utf8").strip()
-            logger.debug(f"Read line {line}, put to the queue")
-            await queue.put(line)
-        return proc
+    async def _run(self, mode: str, idx: int):
+        tid = asyncio.current_task().get_name()
 
-    async def run_once(self, tid, queue: asyncio.Queue):
-        try:
-            started_at = time.time()
-            path = self.config.get("auto", "start_auto_mode_script_path",)
+        def event(event):
+            return {"id": tid, "event": event, "mode": mode, "batch": idx}
 
-            # Run and wait for the process to finish
-            proc = await self._run(path, queue)
-            await proc.wait()
+        async def consume(q: asyncio.Queue):
+            try:
+                while True:
+                    evt = await q.get()
+                    await self.hub.publish("c_worker", evt)
+                    q.task_done()
+            except asyncio.CancelledError:
+                logger.info(f"consumer stopped")
 
-            # Mocks
-            ret = {
-                "id": tid,
-                # TODO: set mode
-                "mode": "",
-                "startedAt": started_at,
-                "values": {
-                    "crypto": random.random() * 4,
-                    "giardia": random.random() * 3,
-                },
-                "finishedAt": time.time(),
-            }
+        await self.hub.publish("c_scheduler", event("start_run"))
 
-            self.cached_results["today"].append(ret)
+        queue = asyncio.Queue()
+        # bring up the consumer
+        consumer = asyncio.create_task(consume(queue))
+        # start auto mode
+        await self.camera_service.start_auto_capturing(queue)
+        # wait for all events to be consumed
+        await queue.join()
+        # no events left, shutdown the consumer gracefully
+        consumer.cancel()
 
-            return ret
-        except asyncio.CancelledError as e:
-            # Terminate the process if it's cancelled
-            await proc.terminate()
-            logger.info(f"Stopped run_once({tid})")
-            # reraise to propogate this cancel to run_period
-            raise e
+        await self.hub.publish("c_scheduler", event("finish_run"))
+
+    async def run_once(self):
+        await self._run("once", 0)
 
     async def get_results(self):
         return self.cached_results
-

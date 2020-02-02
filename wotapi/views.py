@@ -2,7 +2,6 @@
 HTTP endpoints
 """
 import asyncio
-import io
 
 from aiohttp import web
 
@@ -23,17 +22,6 @@ from wotapi.utils import id_factory
 import paco
 from aiohttp import MultipartWriter
 
-from configparser import ConfigParser
-
-config = ConfigParser()
-config.read_dict(
-    {
-        "auto": {
-            "start_auto_mode_script_path": "/home/yuanfei/projects/siu/wot-core/mocks/startautoflow.py"
-            # "tests/resources/mock_auto_mode.py"
-        }
-    }
-)
 
 routes = web.RouteTableDef()
 
@@ -67,17 +55,18 @@ async def get_auto_mode_results(request):
     """
     Get historical and today's data for AutoMode.
 
-    It's called on AutoMode page loaded as well as on `onAutoModeDataUpdated` emitted
+    It's called on AutoMode page loaded as well as 
+    on `onAutoModeDataUpdated` emitted
     """
     auto_service: AutoService = request.app["auto_service"]
     ret = await auto_service.get_results()
     return web.json_response(ret)
 
 
-@routes.post("/auto/tasks")
+@routes.post("/tasks/auto/{mode}")
 async def start_auto_mode_task(request):
     data = await request.json()
-    mode = data["mode"]
+    mode = request.match_info["mode"]
 
     # Scheduled task id
     tid = None
@@ -95,9 +84,15 @@ async def start_auto_mode_task(request):
         tid, t, progress = await auto_service.schedule_run_multiple(times)
 
     async def notify_done(t):
-        ret = await t
-        logger.debug(f"task {tid} completed: {ret}")
-        await socket_io.emit("on_auto_mode_task_done", ret)
+        """
+        Applicable for single mode only
+        """
+        try:
+            ret = await t
+            logger.debug(f"task {tid} completed: {ret}")
+            await socket_io.emit("on_auto_mode_task_done", ret)
+        except Exception as e:
+            logger.error(f"task {tid} failed: {e}")
 
     async def notify_updated(q: asyncio.Queue):
         parser = AutoflowParser()
@@ -145,7 +140,9 @@ async def start_detection(request):
 
     socket_io.start_background_task(emit_progress_events)
 
-    return web.json_response({"status": "ok", "rid": rid, "request_body": json})
+    return web.json_response(
+        {"status": "ok", "rid": rid, "request_body": json}
+    )
 
 
 @routes.delete(r"/detection/tasks/{tid:\w+}")
@@ -160,9 +157,7 @@ async def get_settings(request):
     return web.json_response(
         {
             "settings": await setting_service.get(),
-            "meta": {
-                "path": "/home/yuanfei/projects/siu/wotapi/tests/resources/config.json"
-            },
+            "meta": {"path": setting_service.path},
         }
     )
 
@@ -171,7 +166,9 @@ async def get_settings(request):
 async def update_settings(request):
     payload = await request.json()
     new_settings = payload["settings"]
-    # the update key can be none for mirror changes that doesn't have side effect
+
+    # the update key can be none for mirror changes that
+    # doesn't have side effect
     updated_key = payload.get("key")
 
     # Update the config file
@@ -215,7 +212,9 @@ async def cancel_concentration_task(request):
         await task_service.cancel(tid)
         return web.json_response({"status": "ok"})
     except Exception as e:
-        return web.json_response({"status": "error", "msg": str(e)}, status=500)
+        return web.json_response(
+            {"status": "error", "msg": str(e)}, status=500
+        )
 
 
 async def write_new_parts(data, boundary, response):
@@ -324,8 +323,10 @@ async def reset_particle_count(request):
 @routes.post("/capturing/tasks/capturing")
 async def submit_capturing_task(request):
     camera_service: CameraService = request.app["camera_service"]
-    tid, queue = await camera_service.start_capturing()
-    task = asyncio.create_task(_on_progress(tid, queue), name="start_capturing")
+    tid, queue = await camera_service.start_manual_capturing()
+    task = asyncio.create_task(
+        _on_progress(tid, queue), name="start_capturing"
+    )
     logger.debug(f"Created {task=}")
     return web.json_response({"id": tid})
 
@@ -340,3 +341,42 @@ async def submit_clean_task(request):
     logger.debug(f"Created {task=}")
     return web.json_response({"id": tid})
 
+
+async def publish_task_cancel_update(task: asyncio.Task):
+    tid = task.get_name()
+    try:
+        # wait for the task to finish clean up
+        await task
+        # succeed cancelling the task
+        await socket_io.emit(
+            "k_task_state", {"id": tid, "state": "k_cancelled"}
+        )
+    except Exception as e:
+        # cancellation went wrong..
+        await socket_io.emit(
+            "k_task_state",
+            {"id": tid, "state": "k_cancel_failed", "msg": str(e)},
+        )
+
+
+@routes.delete(r"/tasks/{tid}")
+async def cancel_task(request):
+    tid = request.match_info.get("tid")
+    task_service: TaskService = request.app["task_service"]
+    try:
+        task = task_service.running_tasks[tid]
+    except KeyError:
+        return web.json_response(
+            {"id": tid, "error": "task not found"}, status=500
+        )
+
+    # Task might not be cancelled at this moment as cleanup will be invoked
+    # inside the try/except blocks
+    cancelled = task.cancel()
+    if not cancelled:
+        # waiting for clean ups
+        # publish the state changes via socket
+        asyncio.create_task(publish_task_cancel_update(task))
+
+    # tell UI the progress of the cancellation
+    return web.json_response({"id": tid, "cancell": cancelled})

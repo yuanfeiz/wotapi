@@ -8,4 +8,3 @@ for i in range(5):
 
 time.sleep(0.1)
 print("END", flush=True)
-
