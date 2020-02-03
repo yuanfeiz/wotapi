@@ -1,19 +1,18 @@
-from pathlib import Path
-import rpyc
-import time
 import asyncio
-import random
-from wotapi.utils import logger
 import copy
-from collections import Counter
 import shutil
+from collections import Counter
+from pathlib import Path
+
+import rpyc
+
+from wotapi.utils import logger
 
 
 class DetectorService:
     """
     This service relie on a running cgdetector.x64
     """
-
     def __init__(self, config):
         self.debug = config.getboolean("global", "DEBUG", fallback=True)
         self.config = config["detector_service"]
@@ -26,10 +25,10 @@ class DetectorService:
             self.config["HOST"],
             self.config.getint("PORT"),
             config={
-                "allow_pickle": True,
-                "sync_request_timeout": self.config.getint(
-                    "REQUEST_TIMEOUT", fallback=5
-                ),
+                "allow_pickle":
+                True,
+                "sync_request_timeout":
+                self.config.getint("REQUEST_TIMEOUT", fallback=5),
             },
         )
 
@@ -108,9 +107,8 @@ class DetectorService:
                     if confidence_level >= self.thresholds[label]:
                         counter[label] += 1
 
-                    pathd = (
-                        p / str(label) / f"{ confidence_level }_{bname}.png"
-                    )
+                    pathd = (p / str(label) /
+                             f"{ confidence_level }_{bname}.png")
                     paths = path / name
                     shutil.copyfile(paths, pathd)
                     logger.info(f"copy from {paths=} to {pathd=}")
@@ -129,4 +127,3 @@ class DetectorService:
     async def stop(self):
         self.rpc.stopDetector()
         logger.info(f"stopped the detector")
-

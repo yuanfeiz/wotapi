@@ -1,16 +1,14 @@
-from multiprocessing.managers import BaseManager
-from numpngw import write_png
 import time
-import rpyc
+from multiprocessing.managers import BaseManager
+
 import numpy as np
-from wotapi.services.image import ImageService
+import rpyc
 
 
 class Camera:
     """
     Camera of the detector, control via RPC
     """
-
     def __init__(self, ip="127.0.0.1", port=51235):
         self.rpc = rpyc.connect(ip, port).root
 
