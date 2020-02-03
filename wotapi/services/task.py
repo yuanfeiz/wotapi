@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 from wotapi.utils import id_factory, logger
-from weakref import WeakValueDictionary
+from typing import Mapping
 
 TaskDone = "--END--"
 
@@ -9,9 +9,7 @@ TaskDone = "--END--"
 class TaskService:
     def __init__(self, root_path: Path):
         self.root_path = root_path
-        self.running_tasks: WeakValueDictionary[
-            str, asyncio.Task
-        ] = WeakValueDictionary()
+        self.running_tasks: Mapping[str, asyncio.Task] = {}
 
     async def _run_script(
         self, filename: str, queue: asyncio.Queue = None, /, **kwargs
@@ -29,12 +27,12 @@ class TaskService:
             proc = await asyncio.create_subprocess_shell(
                 cmd, stdout=asyncio.subprocess.PIPE
             )
-            logger.debug(f"Start executing {cmd}")
+            logger.info(f"Start executing {cmd}")
 
             while not proc.stdout.at_eof():
                 data = await proc.stdout.readline()
                 line = data.decode("utf8").strip()
-                logger.debug(f"Read line {line}, put to the queue: {queue}")
+                logger.info(f"Read line {line}, put to the queue: {queue}")
                 if queue and len(line) > 0:
                     await queue.put(line)
 
@@ -42,7 +40,7 @@ class TaskService:
                 await queue.put(TaskDone)
             return await proc.wait()
         except asyncio.CancelledError as e:
-            logger.debug(
+            logger.warning(
                 f"Cancel script executing {script_path}, pid={proc.pid}"
             )
             # Return the CancelledError to terminal the queue
@@ -56,8 +54,7 @@ class TaskService:
         logger.debug(f"Accept submitted task: {action=}, {kwargs=}")
         tid = id_factory.get()
         filename = f"{action}.py"
-        task = asyncio.create_task(self._run_script(filename, queue, **kwargs))
-        self.running_tasks[tid] = task
+        self.create_task(self._run_script(filename, queue, **kwargs), tid)
         return tid
 
     async def cancel(self, tid: str, stop_script_filename="stop"):

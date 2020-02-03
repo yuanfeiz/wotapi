@@ -45,17 +45,17 @@ class AutoService:
         self, mode: str, **kwargs
     ) -> (str, AMemorySubscriber, AMemorySubscriber):
         # do argument checks
-        assert mode in ["once", "period", "multiple"]
+        assert mode in ["single", "period", "scheduled"]
         self.cancel_running_task()
 
         # assign tid for the child scheduler
         tid = id_factory.get()
         # for emitting scheduler events eg. "new batch starts"
-        scheduler_sub = self.hub.subscribe("c_scheduler")
+        scheduler_sub = await self.hub.subscribe("c_scheduler")
         # for emitting worker events
-        worker_sub = self.hub.subscribe("c_worker")
+        worker_sub = await self.hub.subscribe("c_worker")
 
-        if mode == "once":
+        if mode == "single":
             self.running_task = self.task_service.create_task(
                 self.run_once(), tid
             )
@@ -65,7 +65,7 @@ class AutoService:
                 self.run_period(), tid
             )
             logger.info(f"Scheduled autorun {mode=} {self.running_task}")
-        elif mode == "multiple":
+        elif mode == "scheduled":
             times = kwargs["times"]
             interval_secs, defer_secs = self.calc_interval_and_defer_secs(
                 times
@@ -148,6 +148,7 @@ class AutoService:
 
     async def _run(self, mode: str, idx: int):
         tid = asyncio.current_task().get_name()
+        logger.debug(f"running auto mode task({tid}): {mode=}, {idx=}")
 
         def event(event):
             return {"id": tid, "event": event, "mode": mode, "batch": idx}
@@ -156,6 +157,7 @@ class AutoService:
             try:
                 while True:
                     evt = await q.get()
+                    logger.info(f"get c_worker event: {evt}")
                     await self.hub.publish("c_worker", evt)
                     q.task_done()
             except asyncio.CancelledError:

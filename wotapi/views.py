@@ -2,8 +2,10 @@
 HTTP endpoints
 """
 import asyncio
-
+import time
 from aiohttp import web
+
+from aio_pubsub.interfaces import Subscriber
 
 from wotapi.services import (
     AutoService,
@@ -14,8 +16,12 @@ from wotapi.services import (
     CameraService,
     MachineService,
 )
+from wotapi.services.log_parser import (
+    LogParser,
+    RunProgressParser,
+    SchedulerEventParser,
+)
 from wotapi.services import image
-from wotapi.services.autoflow_parser import AutoflowParser
 from wotapi.utils import logger
 from wotapi.socket_io import socket_io
 from wotapi.utils import id_factory
@@ -63,58 +69,76 @@ async def get_auto_mode_results(request):
     return web.json_response(ret)
 
 
+async def notify_done(t: asyncio.Task):
+    """
+    Applicable for single mode only
+    """
+    tid = t.get_name()
+    try:
+        ret = await t
+        logger.debug(f"task {tid} completed: {ret}")
+        await socket_io.emit(
+            "task_state",
+            {"id": tid, "state": "k_completed", "endedAt": int(time.time()),},
+        )
+    except Exception as e:
+        logger.exception(f"task {tid} failed: {e}")
+        await socket_io.emit(
+            "task_state",
+            {
+                "id": tid,
+                "state": "k_failed",
+                "endedAt": int(time.time()),
+                "msg": str(e),
+            },
+        )
+
+
+async def notify_updated(tid: str, sub: Subscriber, parser: LogParser):
+    try:
+        async for s in sub:
+            ret = parser.parse(s)
+            logger.info(f"Task {tid} gets new update: {ret}")
+            if ret is not None and ret["event"] == "progress":
+                await socket_io.emit("task_logs", ret["progress"])
+    except asyncio.CancelledError:
+        logger.debug(f"progress for {tid} is canceled")
+
+
 @routes.post("/tasks/auto/{mode}")
 async def start_auto_mode_task(request):
     data = await request.json()
     mode = request.match_info["mode"]
 
-    # Scheduled task id
-    tid = None
-    t: asyncio.Task = None
-    progress: asyncio.Queue = asyncio.Queue()
-
     auto_service: AutoService = request.app["auto_service"]
+    task_service: TaskService = request.app["task_service"]
 
-    if mode == "single":
-        tid, t, progress = await auto_service.schedule_run_once()
-    elif mode == "period":
-        tid, t, progress = await auto_service.schedule_run_period()
+    if mode in ["single", "period"]:
+        tid, scheduler_sub, worker_sub = await auto_service.schedule(mode)
     elif mode == "scheduled":
         times = data["times"]
-        tid, t, progress = await auto_service.schedule_run_multiple(times)
+        tid, scheduler_sub, worker_sub = await auto_service.schedule(
+            mode, times
+        )
 
-    async def notify_done(t):
-        """
-        Applicable for single mode only
-        """
-        try:
-            ret = await t
-            logger.debug(f"task {tid} completed: {ret}")
-            await socket_io.emit("on_auto_mode_task_done", ret)
-        except Exception as e:
-            logger.error(f"task {tid} failed: {e}")
+    t = task_service.running_tasks[tid]
 
-    async def notify_updated(q: asyncio.Queue):
-        parser = AutoflowParser()
-        try:
-            while True:
-                s = await q.get()
-                ret = parser.parse(s)
-                logger.debug(f"Task {tid} gets new update: {ret}")
-                if ret is not None and ret["event"] == "progress":
-                    await socket_io.emit(
-                        "on_auto_mode_task_updated", ret["progress"]
-                    )
-        except asyncio.CancelledError:
-            logger.debug(f"progress for {tid} is canceled")
+    logger.debug(f"Subscribe to task({mode}/{tid}) updates")
 
-    logger.debug(f"Subscribe to task({mode}/{tid}) updates: {progress}")
     asyncio.create_task(
         # Cancel progress report when task is done(reflecting by t)
-        paco.race([notify_done(t), notify_updated(progress)])
+        paco.race(
+            [
+                notify_done(t),
+                notify_updated(tid, scheduler_sub, SchedulerEventParser()),
+                notify_updated(tid, worker_sub, RunProgressParser()),
+            ]
+        )
     )
 
-    return web.json_response({"status": "ok", "id": tid})
+    return web.json_response(
+        {"state": "k_queued", "id": tid, "startedAt": time.time()}
+    )
 
 
 @routes.delete(r"/auto/tasks/{tid:\w+}")
@@ -157,7 +181,7 @@ async def get_settings(request):
     return web.json_response(
         {
             "settings": await setting_service.get(),
-            "meta": {"path": setting_service.path},
+            "meta": {"path": str(setting_service.path)},
         }
     )
 

@@ -1,7 +1,25 @@
 from wotapi.utils import logger
+import abc
 
 
-class AutoflowParser:
+class LogParser(metaclass=abc.ABCMeta):
+    """Abstract Parser
+    """
+
+    @abc.abstractmethod
+    def parse(self, item):
+        pass
+
+
+class SchedulerEventParser(LogParser):
+    def __init__(self):
+        pass
+
+    def parse(self, item):
+        return item
+
+
+class RunProgressParser(LogParser):
     """
     The task object to parse script output etc.
     """

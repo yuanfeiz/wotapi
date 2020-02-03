@@ -27,20 +27,11 @@ async def on_startup(app):
     app["results_path_feed"] = None
 
     async def start_feeds():
-        await asyncio.gather(
-            camera_service.emit_status_queue_item(),
-            camera_service.emit_command_queue_item(),
-        )
+        await camera_service.emit_status_queue_item()
 
     async def sub_intensity_feed():
         async for item in camera_service.intensity_stream:
             await socket_io.emit("on_intensity_updated", item)
-
-    async def sub_camera_info_feed():
-        feed = await camera_service.hub.subscribe("camera_info")
-        app["camera_feed"] = feed
-        async for item in feed:
-            logger.debug(item)
 
     async def sub_results_path_feed():
         feed = await camera_service.hub.subscribe("results_path")
@@ -60,7 +51,6 @@ async def on_startup(app):
     asyncio.create_task(
         asyncio.wait(
             {
-                sub_camera_info_feed(),
                 sub_intensity_feed(),
                 sub_sensor_reading_feed(),
                 sub_results_path_feed(),
