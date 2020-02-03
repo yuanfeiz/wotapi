@@ -10,9 +10,8 @@ import paco
 
 
 class AutoService:
-    def __init__(
-        self, config, task_service: TaskService, camera_service: CameraService
-    ):
+    def __init__(self, config, task_service: TaskService,
+                 camera_service: CameraService):
         # At most one running task at a time
         self.running_task: asyncio.Task = None
         self.progress: typing.Dict[str, asyncio.Queue] = {}
@@ -20,8 +19,14 @@ class AutoService:
 
         self.cached_results = {
             "past": [
-                {"date": "2020-01-21", "result": "k_full"},
-                {"date": "2020-01-22", "result": "k_none"},
+                {
+                    "date": "2020-01-21",
+                    "result": "k_full"
+                },
+                {
+                    "date": "2020-01-22",
+                    "result": "k_none"
+                },
             ],
             "today": [],
         }
@@ -31,8 +36,10 @@ class AutoService:
 
         self.hub = AMemoryPubSub(asyncio.Queue)
 
-    async def calc_interval_and_defer_secs(times_per_day: int = 8):
-        interval_secs = 24 * 60 * 60 / times_per_day
+    def calc_interval_and_defer_secs(self,
+                                     times_per_day: int = 8
+                                     ) -> typing.Tuple[int, int]:
+        interval_secs = int(24 * 60 * 60 / times_per_day)
 
         now = datetime.now()
         tmr = now + timedelta(days=1)
@@ -43,7 +50,7 @@ class AutoService:
 
     async def schedule(
         self, mode: str, **kwargs
-    ) -> (str, AMemorySubscriber, AMemorySubscriber):
+    ) -> typing.Tuple[str, AMemorySubscriber, AMemorySubscriber]:
         # do argument checks
         assert mode in ["single", "period", "scheduled"]
         self.cancel_running_task()
@@ -57,27 +64,22 @@ class AutoService:
 
         if mode == "single":
             self.running_task = self.task_service.create_task(
-                self.run_once(), tid
-            )
+                self.run_once(), tid)
             logger.info(f"Scheduled autorun {mode=} {self.running_task}")
         elif mode == "period":
             self.running_task = self.task_service.create_task(
-                self.run_period(), tid
-            )
+                self.run_period(), tid)
             logger.info(f"Scheduled autorun {mode=} {self.running_task}")
         elif mode == "scheduled":
             times = kwargs["times"]
             interval_secs, defer_secs = self.calc_interval_and_defer_secs(
-                times
-            )
+                times)
             self.running_task = self.task_service.create_task(
-                self.run_multiple(defer_secs, interval_secs), tid
-            )
+                self.run_multiple(defer_secs, interval_secs), tid)
             logger.info(
                 f"Scheduled autorun {mode=} {self.running_task}, "
                 f"will be run in {defer_secs}s and interval is "
-                f"{interval_secs}s",
-            )
+                f"{interval_secs}s", )
 
         return tid, scheduler_sub, worker_sub
 
@@ -89,12 +91,12 @@ class AutoService:
 
     async def run_period(self):
         tid = asyncio.current_task().get_name()
+        idx = 0
 
         def event(event, idx):
             return {"id": tid, "event": event, "mode": "period", "batch": idx}
 
         try:
-            idx = 0
             await self.hub.publish("c_scheduler", event("start", idx))
             while True:
                 logger.info(f"Running #{idx} run_period({tid})")
@@ -108,6 +110,7 @@ class AutoService:
 
     async def run_multiple(self, defer_secs: int, interval_secs: int):
         tid = asyncio.current_task().get_name()
+        idx = 0
 
         def event(event, idx):
             return {
@@ -119,7 +122,6 @@ class AutoService:
 
         try:
             # TODO: duplicate w/ run_period, requires refactor
-            idx = 0
             await self.hub.publish("c_scheduler", event("start", idx))
 
             async def _run_once():
@@ -131,10 +133,8 @@ class AutoService:
                 # finish
                 idx += 1
 
-            logger.debug(
-                f"Scheduling run_multiple({tid}) in {defer_secs}s, "
-                f"interval is {interval_secs}s"
-            )
+            logger.debug(f"Scheduling run_multiple({tid}) in {defer_secs}s, "
+                         f"interval is {interval_secs}s")
 
             await asyncio.sleep(defer_secs)
 
@@ -178,7 +178,7 @@ class AutoService:
         await self.hub.publish("c_scheduler", event("finish_run"))
 
     async def run_once(self):
-        await self._run("once", 0)
+        await self._run("single", 0)
 
     async def get_results(self):
         return self.cached_results

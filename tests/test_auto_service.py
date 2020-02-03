@@ -1,8 +1,10 @@
+from wotapi.services.camera import CameraService
+from wotapi.services.task import TaskService
 from wotapi.services import AutoService
 import pytest
 import asyncio
 from configparser import ConfigParser
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 config = ConfigParser()
 config.read_dict({
@@ -45,18 +47,39 @@ async def test_schedule_run_once(auto_service: AutoService, mocker):
 
 
 @pytest.mark.asyncio
-async def test_run_once_yield_subprocess_stdout(auto_service: AutoService,
-                                                mocker):
-    q = asyncio.Queue()
+async def test_run_once(mocker):
+    camera_srv_mock = MagicMock(CameraService)
 
-    async def _test_queue(q):
-        assert (await q.get()) == "START"
-        for i in range(5):
-            assert (await q.get()).startswith("STAT:AL")
+    async def produce(queue: asyncio.Queue):
+        await queue.put('m')
+        await queue.put('a')
+        await queue.put('y')
 
-    ret = await asyncio.gather(auto_service.run_once("foo", q), _test_queue(q))
+    camera_srv_mock.start_auto_capturing.side_effect = produce
 
-    assert ret[0]["id"] == "foo"
+    auto_service = AutoService(config, MagicMock(TaskService), camera_srv_mock)
+    sched_sub = await auto_service.hub.subscribe('c_scheduler')
+    worker_sub = await auto_service.hub.subscribe('c_worker')
+
+    await auto_service.run_once()
+
+    # check scheduler events
+    expected_seq = ['start_run', 'finish_run']
+    for evt in expected_seq:
+        item = await sched_sub.__anext__()
+        assert evt == item['event']
+        assert 0 == item['batch']
+        assert 'single' == item['mode']
+    # drain the queue
+    assert sched_sub.messages.qsize() == 0
+
+    # check worker events
+    expected_seq = list('may')
+    for evt in expected_seq:
+        assert evt == await worker_sub.__anext__()
+    assert sched_sub.messages.qsize() == 0
+
+    camera_srv_mock.start_auto_capturing.assert_awaited_once()
 
 
 @pytest.mark.skip("only run to figure out the mechenism")
