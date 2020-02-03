@@ -403,4 +403,4 @@ async def cancel_task(request):
         asyncio.create_task(publish_task_cancel_update(task))
 
     # tell UI the progress of the cancellation
-    return web.json_response({"id": tid, "cancell": cancelled})
+    return web.json_response({"id": tid, "cancelled": cancelled})

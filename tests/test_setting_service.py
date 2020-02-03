@@ -11,11 +11,13 @@ path = path.resolve()
 @pytest.fixture
 def config():
     config = ConfigParser()
-    config.read_dict({"setting_service": {"path": path}})
+    config.read('config.test.ini')
+    # print(config.sections())
     return config
 
 
-async def test_get_settings(aiohttp_client, config):
+async def test_get_settings(aiohttp_client, config, mocker):
+    mocker.patch('wotapi.server.sanity_check')
     app = setup_app(web.Application(), config)
     cli = await aiohttp_client(app)
     resp = await cli.get("/settings")

@@ -3,6 +3,7 @@ import copy
 import shutil
 from collections import Counter
 from pathlib import Path
+from lazy_load import lazy_func, lazy
 
 import rpyc
 
@@ -19,11 +20,16 @@ class DetectorService:
         self.thresholds = [
             float(v) for v in self.config.get("THRESHOLDS").split(",")
         ]
+        self.conn = self._get_conn()
+        self.rpc = lazy(lambda: self.conn.root)
 
+    @lazy_func
+    def _get_conn(self):
         # Setup the connection
-        self._conn = rpyc.connect(
-            self.config["HOST"],
-            self.config.getint("PORT"),
+        host, port = self.config.get('HOST'), self.config.getint('PORT')
+        conn = rpyc.connect(
+            host,
+            port,
             config={
                 "allow_pickle":
                 True,
@@ -31,22 +37,16 @@ class DetectorService:
                 self.config.getint("REQUEST_TIMEOUT", fallback=5),
             },
         )
-
-        # Check if detector is connected
-        if self.connected():
-            logger.info(
-                f'Detector connected! ({self.config["HOST"]}:{self.config["PORT"]})'
-            )
-
-        self.rpc = self._conn.root
+        logger.info(f'Detector is connected! ({host}:{port})')
+        return conn
 
     def connected(self):
         try:
-            # ping the service and wait for at most 1s
-            self._conn.ping(timeout=1)
+            self.conn.ping()
             return True
-        except Exception as e:
-            logger.error(f"failed to connect to the detector: {e}")
+        except Exception:
+            host, port = self.config.get('HOST'), self.config.getint('PORT')
+            logger.error(f'Detector RPC is down! ({host}:{port})')
             return False
 
     async def start(self, path, monitor_mode):

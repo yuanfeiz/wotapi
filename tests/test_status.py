@@ -1,20 +1,25 @@
+from configparser import ConfigParser
+from unittest.mock import AsyncMock, MagicMock, Mock, call
 from aiohttp import web
 from wotapi.server import setup_app
 
 
-async def test_get_status(aiohttp_client):
-    app = setup_app(web.Application(), {})
+async def test_get_status(aiohttp_client, mocker):
+    m: Mock = mocker.patch('wotapi.server.sanity_check')
+    app = setup_app(web.Application(), MagicMock(ConfigParser))
     cli = await aiohttp_client(app)
     resp = await cli.get("/status")
 
     assert await resp.json() == {"status": "ok"}
+    m.assert_called_once_with(app)
 
 
-async def test_delete_auto_mode_task(aiohttp_client, mocker):
-    m = mocker.patch("wotapi.services.AutoService.cancel_running_task")
-    app = setup_app(web.Application(), {})
-    cli = await aiohttp_client(app)
-    resp = await cli.delete("/auto/tasks/foo")
+async def test_patch_coro_py38(mocker):
+    class Foo:
+        async def foo(self, n):
+            return n * n
 
-    assert await resp.json() == {"status": "ok", "tid": "foo"}
-    m.assert_called_with("foo")
+    f = Foo()
+    m: AsyncMock = mocker.patch.object(f, 'foo', return_value=1)
+    assert await f.foo(20) == 1
+    m.assert_awaited_once()
