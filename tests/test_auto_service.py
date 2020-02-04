@@ -4,7 +4,7 @@ from wotapi.services import AutoService
 import pytest
 import asyncio
 from configparser import ConfigParser
-from unittest.mock import AsyncMock, MagicMock, Mock
+from unittest.mock import ANY, MagicMock, Mock
 
 config = ConfigParser()
 config.read_dict({
@@ -24,26 +24,23 @@ async def test_init_auto_service(auto_service):
     assert auto_service is not None
 
 
+@pytest.mark.parametrize('mode,raised,n', [
+    ('once', True, None),
+    ('single', False, None),
+    ('period', False, None),
+    ('scheduled', False, 8),
+])
 @pytest.mark.asyncio
-async def test_schedule_run_once(auto_service: AutoService, mocker):
-    """
-    Simply run the procedure for once
-    """
-    mock_run = mocker.patch.object(auto_service,
-                                   "_run",
-                                   new_callable=AsyncMock)
-    tid, task, q = await auto_service.schedule_run_once()
-    assert isinstance(tid, str)
-    assert len(tid) > 0
-
-    res = (await auto_service.get_results())["today"]
-    prev_len = len(res)
-
-    await task
-    assert task.done()
-
-    res = (await auto_service.get_results())["today"]
-    assert len(res) == prev_len + 1
+async def test_schedule_rejects_invalid_mode(mode, raised, n,
+                                             auto_service: AutoService,
+                                             mocker):
+    if raised:
+        with pytest.raises(AssertionError):
+            await auto_service.schedule(mode)
+    else:
+        tid, _, _ = await auto_service.schedule(mode, times=n)
+        m: MagicMock = auto_service.task_service.create_task
+        m.assert_called_once_with(ANY, tid)
 
 
 @pytest.mark.asyncio
@@ -80,20 +77,3 @@ async def test_run_once(mocker):
     assert sched_sub.messages.qsize() == 0
 
     camera_srv_mock.start_auto_capturing.assert_awaited_once()
-
-
-@pytest.mark.skip("only run to figure out the mechenism")
-@pytest.mark.asyncio
-async def test_vanilla_run_once():
-    import sys
-
-    proc = await asyncio.create_subprocess_exec(
-        sys.executable,
-        "tests/resources/mock_auto_mode.py",
-        stdout=asyncio.subprocess.PIPE,
-    )
-    while not proc.stdout.at_eof():
-        data = await proc.stdout.readline()
-        line = data.decode("utf8").strip()
-        print(line, flush=True)
-    assert proc == None
