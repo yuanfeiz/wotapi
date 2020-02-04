@@ -16,6 +16,7 @@ from wotapi.services import (
 from wotapi.socket_io import socket_io
 from wotapi.utils import logger
 from wotapi.views import routes
+import os
 
 
 def sanity_check(app):
@@ -124,7 +125,11 @@ def setup_app(app, config):
 
     app.add_routes(routes)
     app.add_routes([web.static("/assets", "./assets", show_index=True)])
-    app.add_routes([web.static("/app", "../wotapp/dist/", show_index=True)])
+
+    if not os.getenv('GITHUB_ACTIONS'):
+        # not to add static files during CI
+        app.add_routes(
+            [web.static("/app", "../wotapp/dist/", show_index=True)])
     app.on_startup.append(on_startup)
 
     setup_cors(app)
