@@ -4,7 +4,8 @@ from wotapi.services import AutoService
 import pytest
 import asyncio
 from configparser import ConfigParser
-from unittest.mock import ANY, MagicMock, Mock
+from unittest.mock import ANY, AsyncMock, MagicMock, Mock
+import unittest
 
 config = ConfigParser()
 config.read_dict({
@@ -77,3 +78,27 @@ async def test_run_once(mocker):
     assert sched_sub.messages.qsize() == 0
 
     camera_srv_mock.start_auto_capturing.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_run_period_error(auto_service: AutoService,
+                                mocker: unittest.mock):
+    m: AsyncMock = mocker.patch.object(auto_service,
+                                       '_run',
+                                       side_effect=list('may'))
+    sched_sub = await auto_service.hub.subscribe('c_scheduler')
+
+    with pytest.raises(StopAsyncIteration):
+        await auto_service.run_period()
+    assert m.await_count == 4
+    expects = [
+        ('start', 0),
+        ('abort', 3),
+    ]
+
+    for exp in expects:
+        item = await sched_sub.__anext__()
+        assert item['event'], item['batch'] == exp
+        assert item['mode'] == 'period'
+        if exp[0] == 'abort':
+            assert 'StopAsyncIteration()' in item['msg']

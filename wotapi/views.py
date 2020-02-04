@@ -28,10 +28,7 @@ from wotapi.utils import id_factory
 import paco
 from aiohttp import MultipartWriter
 
-
 routes = web.RouteTableDef()
-
-__all__ = ["routes"]
 
 
 async def _on_progress(tid, queue: asyncio.Queue):
@@ -79,7 +76,11 @@ async def notify_done(t: asyncio.Task):
         logger.debug(f"task {tid} completed: {ret}")
         await socket_io.emit(
             "task_state",
-            {"id": tid, "state": "k_completed", "endedAt": int(time.time()),},
+            {
+                "id": tid,
+                "state": "k_completed",
+                "endedAt": int(time.time()),
+            },
         )
     except Exception as e:
         logger.exception(f"task {tid} failed: {e}")
@@ -118,8 +119,7 @@ async def start_auto_mode_task(request):
     elif mode == "scheduled":
         times = data["times"]
         tid, scheduler_sub, worker_sub = await auto_service.schedule(
-            mode, times
-        )
+            mode, times=times)
 
     t = task_service.running_tasks[tid]
 
@@ -127,26 +127,17 @@ async def start_auto_mode_task(request):
 
     asyncio.create_task(
         # Cancel progress report when task is done(reflecting by t)
-        paco.race(
-            [
-                notify_done(t),
-                notify_updated(tid, scheduler_sub, SchedulerEventParser()),
-                notify_updated(tid, worker_sub, RunProgressParser()),
-            ]
-        )
-    )
+        paco.race([
+            notify_done(t),
+            notify_updated(tid, scheduler_sub, SchedulerEventParser()),
+            notify_updated(tid, worker_sub, RunProgressParser()),
+        ]))
 
-    return web.json_response(
-        {"state": "k_queued", "id": tid, "startedAt": time.time()}
-    )
-
-
-@routes.delete(r"/auto/tasks/{tid:\w+}")
-async def stop_auto_mode_task(request):
-    tid = request.match_info.get("tid")
-    auto_service: AutoService = request.app["auto_service"]
-    auto_service.cancel_running_task(tid)
-    return web.json_response({"status": "ok", "tid": tid})
+    return web.json_response({
+        "state": "k_queued",
+        "id": tid,
+        "startedAt": time.time()
+    })
 
 
 @routes.post("/detection/tasks")
@@ -158,15 +149,18 @@ async def start_detection(request):
     # Emit progress pct to UI
     async def emit_progress_events():
         async for pct in detection_service.get_progress_events():
-            await socket_io.emit(
-                "detection_progress_event", {"rid": rid, "pct": pct}
-            )
+            await socket_io.emit("detection_progress_event", {
+                "rid": rid,
+                "pct": pct
+            })
 
     socket_io.start_background_task(emit_progress_events)
 
-    return web.json_response(
-        {"status": "ok", "rid": rid, "request_body": json}
-    )
+    return web.json_response({
+        "status": "ok",
+        "rid": rid,
+        "request_body": json
+    })
 
 
 @routes.delete(r"/detection/tasks/{tid:\w+}")
@@ -178,12 +172,12 @@ async def stop_detection(request):
 @routes.get("/settings")
 async def get_settings(request):
     setting_service: SettingService = request.app["setting_service"]
-    return web.json_response(
-        {
-            "settings": await setting_service.get(),
-            "meta": {"path": str(setting_service.path)},
-        }
-    )
+    return web.json_response({
+        "settings": await setting_service.get(),
+        "meta": {
+            "path": str(setting_service.path)
+        },
+    })
 
 
 @routes.put("/settings")
@@ -236,9 +230,11 @@ async def cancel_concentration_task(request):
         await task_service.cancel(tid)
         return web.json_response({"status": "ok"})
     except Exception as e:
-        return web.json_response(
-            {"status": "error", "msg": str(e)}, status=500
-        )
+        return web.json_response({
+            "status": "error",
+            "msg": str(e)
+        },
+                                 status=500)
 
 
 async def write_new_parts(data, boundary, response):
@@ -259,8 +255,8 @@ async def timg_feed(request) -> web.StreamResponse:
         status=200,
         reason="OK",
         headers={
-            "Content-Type": "multipart/x-mixed-replace;boundary=--%s"
-            % my_boundary
+            "Content-Type":
+            "multipart/x-mixed-replace;boundary=--%s" % my_boundary
         },
     )
     await response.prepare(request)
@@ -270,9 +266,8 @@ async def timg_feed(request) -> web.StreamResponse:
     img_type = request.match_info.get("img_type").upper()
     logger.debug(f"Subscribe to image stream {img_type=}")
 
-    await write_new_parts(
-        image.img_to_bytes(image.blank_image()), my_boundary, response
-    )
+    await write_new_parts(image.img_to_bytes(image.blank_image()), my_boundary,
+                          response)
 
     try:
         async for item in img_stream:
@@ -281,9 +276,8 @@ async def timg_feed(request) -> web.StreamResponse:
                 continue
 
             img = image.frombuffer(item[img_type])
-            await write_new_parts(
-                image.img_to_bytes(img), my_boundary, response
-            )
+            await write_new_parts(image.img_to_bytes(img), my_boundary,
+                                  response)
     except ConnectionResetError:
         logger.debug(f"Ignored premature client disconnection")
 
@@ -297,9 +291,11 @@ async def cancel_capturing_task(request):
     tid = request.match_info.get("tid")
     camera_service: CameraService = request.app["camera_service"]
     exit_code = await camera_service.stop_capturing(tid)
-    return web.json_response(
-        {"status": "ok", "id": tid, "exit_code": exit_code}
-    )
+    return web.json_response({
+        "status": "ok",
+        "id": tid,
+        "exit_code": exit_code
+    })
 
 
 async def _operate_machine(request: web.Request, coro) -> web.Response:
@@ -331,9 +327,8 @@ async def control_syringe_pump(request):
     action = (await request.json())["action"]
     assert action in ["infuse", "withdraw", "stop"], f"{action=} is invalid"
 
-    return await _operate_machine(
-        request, machine_service.control_syringe_pump(action)
-    )
+    return await _operate_machine(request,
+                                  machine_service.control_syringe_pump(action))
 
 
 @routes.post("/capturing/tasks/reset_particle_count")
@@ -348,9 +343,8 @@ async def reset_particle_count(request):
 async def submit_capturing_task(request):
     camera_service: CameraService = request.app["camera_service"]
     tid, queue = await camera_service.start_manual_capturing()
-    task = asyncio.create_task(
-        _on_progress(tid, queue), name="start_capturing"
-    )
+    task = asyncio.create_task(_on_progress(tid, queue),
+                               name="start_capturing")
     logger.debug(f"Created {task=}")
     return web.json_response({"id": tid})
 
@@ -372,14 +366,19 @@ async def publish_task_cancel_update(task: asyncio.Task):
         # wait for the task to finish clean up
         await task
         # succeed cancelling the task
-        await socket_io.emit(
-            "k_task_state", {"id": tid, "state": "k_cancelled"}
-        )
+        await socket_io.emit("k_task_state", {
+            "id": tid,
+            "state": "k_cancelled"
+        })
     except Exception as e:
         # cancellation went wrong..
         await socket_io.emit(
             "k_task_state",
-            {"id": tid, "state": "k_cancel_failed", "msg": str(e)},
+            {
+                "id": tid,
+                "state": "k_cancel_failed",
+                "msg": str(e)
+            },
         )
 
 
@@ -390,9 +389,11 @@ async def cancel_task(request):
     try:
         task = task_service.running_tasks[tid]
     except KeyError:
-        return web.json_response(
-            {"id": tid, "error": "task not found"}, status=500
-        )
+        return web.json_response({
+            "id": tid,
+            "error": "task not found"
+        },
+                                 status=500)
 
     # Task might not be cancelled at this moment as cleanup will be invoked
     # inside the try/except blocks

@@ -3,6 +3,7 @@ from configparser import ConfigParser
 import logging
 from multiprocessing import queues
 from multiprocessing.managers import BaseManager
+from contextlib import contextmanager
 
 import math
 import rpyc
@@ -187,50 +188,50 @@ class CameraService:
         @todo: move to auto service
         """
         settings = await self.setting_service.get()
+
+        # Start capturing particle
+        await self.initiate_capturing(settings)
+
+        # Submit the task, this doesn't block
+        tid = await self.initiate_capturing_script(settings, "startautoflow",
+                                                   queue)
+        detector_service_connected = self.detector_service.connected()
+        classify_task = None
+
         try:
-            await self.initiate_capturing(settings)
-
-            async def noop():
-                pass
-
-            classify_coro = noop()
-            detector_service_connected = self.detector_service.connected()
             if detector_service_connected:
                 logger.info("detector is connected, try classifying images")
                 # Detector is working, wait for the path to return
                 # and start detecting
-
-                # Get the first result path
                 sub = await self.hub.subscribe("results_path")
-                path = None
                 monitor_mode = True
-                async for _path in sub:
-                    path = _path
-                    break
-
-                logger.info(f"get results_path {path}, starting classifier")
-
-                # Start detector
-                classify_coro = self.detector_service.start(path, monitor_mode)
-
-            # submit the task, this doesn't block
-            tid = await self.initiate_capturing_script(settings,
-                                                       "startautoflow", queue)
+                try:
+                    # Get the first result path
+                    logger.info(f'waiting for the result path')
+                    path = await asyncio.wait_for(sub.__anext__(), timeout=3)
+                    logger.info(
+                        f"get results_path {path}, starting classifier")
+                    # Start detector
+                    classify_coro = self.detector_service.start(
+                        path, monitor_mode)
+                    classify_task = asyncio.create_task(classify_coro)
+                except asyncio.TimeoutError:
+                    logger.error('get results_path timeout(3s)')
+                    detector_service_connected = False
 
             # clean up
             # wait for the tasks to be done
-            classify_task = asyncio.create_task(classify_coro)
             script_result = await self.task_service.running_tasks[tid]
             logger.info(f"completed script: {script_result=}")
+            await asyncio.sleep(5)
         except Exception as e:
             logger.exception(f"failed to clean up auto mode: {e}")
         finally:
             # shutdown camera
-            await asyncio.sleep(5)
             await self.stop_capturing(tid, stop_script_name="stopautoflow")
 
             # shutdown detector
-            if detector_service_connected:
+            if detector_service_connected and classify_task is not None:
                 await asyncio.sleep(3)
                 classify_task.cancel()
                 await classify_task

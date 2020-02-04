@@ -93,8 +93,14 @@ class AutoService:
         tid = asyncio.current_task().get_name()
         idx = 0
 
-        def event(event, idx):
-            return {"id": tid, "event": event, "mode": "period", "batch": idx}
+        def event(event, idx, msg=None):
+            return {
+                "id": tid,
+                "event": event,
+                "mode": "period",
+                "batch": idx,
+                'msg': msg
+            }
 
         try:
             await self.hub.publish("c_scheduler", event("start", idx))
@@ -107,6 +113,10 @@ class AutoService:
         except asyncio.CancelledError:
             await self.hub.publish("c_scheduler", event("finish", idx))
             logger.info(f"Stopped run_period({tid}), ran for {idx} times")
+        except Exception as e:
+            await self.hub.publish("c_scheduler", event("abort", idx, repr(e)))
+            logger.info(f'Abort run_period({tid}), ran for {idx} times')
+            raise e
 
     async def run_multiple(self, defer_secs: int, interval_secs: int):
         tid = asyncio.current_task().get_name()

@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 from wotapi.utils import id_factory, logger
-from typing import Mapping
+from typing import Mapping, MutableMapping
 
 TaskDone = "--END--"
 
@@ -9,26 +9,27 @@ TaskDone = "--END--"
 class TaskService:
     def __init__(self, root_path: Path):
         self.root_path = root_path
-        self.running_tasks: Mapping[str, asyncio.Task] = {}
+        self.running_tasks: MutableMapping[str, asyncio.Task] = {}
 
     async def _run_script(
         self, filename: str, queue: asyncio.Queue = None, /, **kwargs
     ):
+        script_path = f"{self.root_path}/{filename}"
+        args = ""
+        if kwargs.get("__SINGLE"):
+            vs = kwargs.pop("__SINGLE")
+            args = " ".join([str(v) for v in vs])
+        else:
+            args = " ".join([f"--{k}={v}" for k, v in kwargs.items()])
+
+        cmd = f"python -u {script_path} {args}"
+
+        proc = await asyncio.create_subprocess_shell(
+            cmd, stdout=asyncio.subprocess.PIPE
+        )
+        logger.info(f"Start executing {cmd}")
+
         try:
-            script_path = f"{self.root_path}/{filename}"
-            args = ""
-            if kwargs.get("__SINGLE"):
-                vs = kwargs.pop("__SINGLE")
-                args = " ".join([str(v) for v in vs])
-            else:
-                args = " ".join([f"--{k}={v}" for k, v in kwargs.items()])
-
-            cmd = f"python -u {script_path} {args}"
-            proc = await asyncio.create_subprocess_shell(
-                cmd, stdout=asyncio.subprocess.PIPE
-            )
-            logger.info(f"Start executing {cmd}")
-
             while not proc.stdout.at_eof():
                 data = await proc.stdout.readline()
                 line = data.decode("utf8").strip()
@@ -47,15 +48,21 @@ class TaskService:
             if queue:
                 await queue.put(e)
             proc.terminate()
+            raise e
 
     async def submit(
         self, action: str, queue: asyncio.Queue = None, /, **kwargs  # noqa
     ) -> str:
-        logger.debug(f"Accept submitted task: {action=}, {kwargs=}")
         tid = id_factory.get()
+        logger.debug(f"Accept submitted task({tid}): {action=}, {kwargs=}")
         filename = f"{action}.py"
         self.create_task(self._run_script(filename, queue, **kwargs), tid)
         return tid
+
+    def create_task(self, coro, tid: str) -> asyncio.Task:
+        task = asyncio.create_task(coro, name=tid)
+        self.running_tasks[tid] = task
+        return task
 
     async def cancel(self, tid: str, stop_script_filename="stop"):
         """
@@ -77,7 +84,3 @@ class TaskService:
             raise Exception(f"unexpected {exit_code=}")
         return exit_code
 
-    def create_task(self, coro, tid: str) -> asyncio.Task:
-        task = asyncio.create_task(coro, name=tid)
-        self.running_tasks[tid] = task
-        return task

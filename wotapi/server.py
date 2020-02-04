@@ -126,10 +126,11 @@ def setup_app(app, config):
     app.add_routes(routes)
     app.add_routes([web.static("/assets", "./assets", show_index=True)])
 
+    # not to add static files during CI
     if not os.getenv('GITHUB_ACTIONS'):
-        # not to add static files during CI
         app.add_routes(
             [web.static("/app", "../wotapp/dist/", show_index=True)])
+
     app.on_startup.append(on_startup)
 
     setup_cors(app)
