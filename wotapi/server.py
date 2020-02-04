@@ -18,7 +18,18 @@ from wotapi.utils import logger
 from wotapi.views import routes
 
 
+def sanity_check(app):
+    # Detector Service
+    detector_service: DetectorService = app['detector_service']
+    assert detector_service.connected()
+
+    camera_service: CameraService = app['camera_service']
+    assert camera_service.connected()
+
+
 async def on_startup(app):
+    sanity_check(app)
+
     camera_service: CameraService = app["camera_service"]
     await camera_service.init_subscribers()
 
@@ -56,8 +67,7 @@ async def on_startup(app):
                 sub_results_path_feed(),
             },
             return_when=asyncio.FIRST_EXCEPTION,
-        )
-    )
+        ))
 
 
 # Setup CORS
@@ -65,9 +75,9 @@ def setup_cors(app):
     cors = aiohttp_cors.setup(
         app,
         defaults={
-            "*": aiohttp_cors.ResourceOptions(
-                allow_headers=("X-Requested-With", "Content-Type")
-            ),
+            "*":
+            aiohttp_cors.ResourceOptions(allow_headers=("X-Requested-With",
+                                                        "Content-Type")),
         },
     )
     for route in list(app.router.routes()):
@@ -97,12 +107,10 @@ def setup_services(app, config):
         config,
     )
 
-    app["auto_service"] = AutoService(
-        config, app["task_service"], app["camera_service"]
-    )
-    app["machine_service"] = MachineService(
-        app["task_service"], app["setting_service"]
-    )
+    app["auto_service"] = AutoService(config, app["task_service"],
+                                      app["camera_service"])
+    app["machine_service"] = MachineService(app["task_service"],
+                                            app["setting_service"])
 
     path = config.get("sensor_service", "PATH")
     app["sensor_service"] = SensorService(path, sampling_freq=0.5)

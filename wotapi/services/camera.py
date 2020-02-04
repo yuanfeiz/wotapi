@@ -1,4 +1,5 @@
 import asyncio
+from configparser import ConfigParser
 import logging
 from multiprocessing import queues
 from multiprocessing.managers import BaseManager
@@ -10,8 +11,8 @@ from tenacity import (
     retry,
     retry_if_exception_type,
     wait_exponential,
-    before_sleep_log,
 )
+from lazy_load import lazy_func, lazy
 
 from wotapi.async_pubsub import AMemoryPubSub
 from wotapi.utils import logger
@@ -30,19 +31,33 @@ class CameraService:
     Camera of the detector, control via RPC.
     This service relies on a running detection.x64 
     """
-
     def __init__(
         self,
         task_service: TaskService,
         setting_service: SettingService,
         detector_service: DetectorService,
-        config,
+        config: ConfigParser,
     ):
-        # TODO: inject rpc and queue_mgr
-        rpc_config = config["camera_rpc"]
-        rpc_host, rpc_port = rpc_config.get("host"), rpc_config.getint("port")
+        # Hub for PubSub
+        self.hub = AMemoryPubSub(asyncio.Queue)
 
-        queue_config = config["camera_queue"]
+        self.task_service = task_service
+        self.setting_service = setting_service
+        self.detector_service = detector_service
+
+        self.rpc_conn = self._get_rpc_conn(config['camera_rpc'])
+        self.rpc = lazy(lambda: self.rpc_conn.root)
+
+        self.queue_mgr = self._get_queue_mgr(config["camera_queue"])
+        self.status_queue = lazy(lambda: self.queue_mgr.status_queue())
+        self.cmd_queue = lazy(lambda: self.queue_mgr.cmd_queue())
+        logger.info(
+            f'qmgr should be lazily evaludated, not connected at this moment')
+
+        self.config = config['camera_rpc']
+
+    @lazy_func
+    def _get_queue_mgr(self, queue_config):
         queue_host, queue_port, authkey = (
             queue_config.get("host"),
             queue_config.getint("port"),
@@ -53,28 +68,39 @@ class CameraService:
             queue_config.get("cmd_queue_name"),
         )
 
-        self.rpc = rpyc.connect(rpc_host, rpc_port).root
-        logger.info(f"RPC connected! ({rpc_host}:{rpc_port})")
-
         CameraQueueManager.register(status_queue_name)
         CameraQueueManager.register(cmd_queue_name)
-        # TODO: make queue_mgr a local variable
-        self.queue_mgr = CameraQueueManager(
-            (queue_host, queue_port), authkey=authkey
-        )
-        self.queue_mgr.connect()
+        mgr = CameraQueueManager((queue_host, queue_port), authkey=authkey)
+
+        # expensive!
+        mgr.connect()
         logger.info(f"Queues connected! ({queue_host}:{queue_port})")
+        return mgr
 
-        self.status_queue = self.queue_mgr.status_queue()
-        self.cmd_queue = self.queue_mgr.cmd_queue()
+    def connected(self) -> bool:
+        # Check RPC status
+        try:
+            self.rpc_conn.ping()
+        except Exception as e:
+            logger.error(f'Camera RPC is down! {e}')
+            return False
 
-        # Hub for PubSub
-        self.hub = AMemoryPubSub(asyncio.Queue)
+        # Check queue status
+        try:
+            self.queue_mgr.connect()
+        except Exception as e:
+            logger.error(f'Camera QUEUE is down! ({e})')
+            return False
 
-        self.task_service = task_service
-        self.setting_service = setting_service
-        self.detector_service = detector_service
-        self.config = config
+        return True
+
+    @lazy_func
+    def _get_rpc_conn(self, rpc_config):
+        rpc_host, rpc_port = rpc_config.get("host"), rpc_config.getint("port")
+
+        conn = rpyc.connect(rpc_host, rpc_port)
+        logger.info(f'Camera RPC connected! ({rpc_host}:{rpc_port})')
+        return conn
 
     def get_info(self):
         return self.rpc.getCamera()
@@ -88,7 +114,8 @@ class CameraService:
         return queue.get_nowait()
 
     @retry(
-        wait=wait_exponential(max=60), after=after_log(logger, logging.DEBUG),
+        wait=wait_exponential(max=60),
+        after=after_log(logger, logging.DEBUG),
     )
     async def put_item(self, queue: queues.Queue, item):
         logger.info(f"send command: {item=}")
@@ -120,9 +147,8 @@ class CameraService:
             else:
                 logger.info(f"get unhandled item: {item}")
 
-            await asyncio.sleep(
-                self.config.getfloat("camera_rpc", "QUEUE_CONSUME_RATE")
-            )
+            wait_for = float(self.config.get("QUEUE_CONSUME_RATE"))
+            await asyncio.sleep(wait_for)
 
     async def init_subscribers(self):
         """
@@ -141,9 +167,8 @@ class CameraService:
         await self.put_item(self.cmd_queue, payload)
         logger.info("Requested cqueue to start capturing")
 
-    async def initiate_capturing_script(
-        self, settings, script_name: str, queue: asyncio.Queue
-    ):
+    async def initiate_capturing_script(self, settings, script_name: str,
+                                        queue: asyncio.Queue):
         # Step 2: run the script to start as well
         script_args = {
             "CPZT": ",".join([str(v) for v in settings.get("CPZT")]),
@@ -152,9 +177,8 @@ class CameraService:
         }
 
         logger.debug(f"Run {script_name} with arguments: {script_args=}")
-        return await self.task_service.submit(
-            script_name, queue, **script_args
-        )
+        return await self.task_service.submit(script_name, queue,
+                                              **script_args)
 
     async def start_auto_capturing(self, queue: asyncio.Queue):
         """
@@ -190,9 +214,8 @@ class CameraService:
                 classify_coro = self.detector_service.start(path, monitor_mode)
 
             # submit the task, this doesn't block
-            tid = await self.initiate_capturing_script(
-                settings, "startautoflow", queue
-            )
+            tid = await self.initiate_capturing_script(settings,
+                                                       "startautoflow", queue)
 
             # clean up
             # wait for the tasks to be done

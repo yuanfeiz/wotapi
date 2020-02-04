@@ -2,20 +2,19 @@ from pathlib import Path
 import json
 import asyncio
 from wotapi.utils import logger
+from typing import Union
 
 
 class SettingService:
     """
     Read and update settings that stores at path
     """
-
-    def __init__(self, path: Path):
+    def __init__(self, path: Union[Path, str]):
         if isinstance(path, str):
             path = Path(path)
-        self.path = path
+        self.path = path.resolve()
         logger.debug(
-            f"Initialized SettingService with config path: {self.path}"
-        )
+            f"Initialized SettingService with config path: {self.path}")
         # The lock currently doesn't work as load and dump
         # are both blocking operation
         self.lock = asyncio.Lock()
