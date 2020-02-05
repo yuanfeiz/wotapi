@@ -27,9 +27,9 @@
     "SURF2": true,
     "ALCH": true,
     "GW": true,
-    "BW": true,
+    "BW": false,
     "MFC": true,
-    "BLEACH": true
+    "BLEACH": false
   },
   "LASER": { "CT": 0.0, "STS": true },
   "SP": { "FR": 0, "VOL": 0.0, "MODE": 0, "STS": true },

@@ -1,4 +1,5 @@
 import asyncio
+from time import time
 from ..utils import id_factory, logger
 import typing
 from datetime import datetime, timedelta
@@ -190,5 +191,43 @@ class AutoService:
     async def run_once(self):
         await self._run("single", 0)
 
-    async def get_results(self):
-        return self.cached_results
+    async def get_all_results(self):
+        """
+        Classification results are stored in a key-value database with
+        structure below:
+
+        * All Results
+        Key: all
+        Values: [
+            { date: '20190102', state: 'k_positive' },
+            { date: '20190103', state: 'k_negative' },
+        ]
+        Notes: only dates with data would exists in this list
+
+
+        * Results by Date
+        Key: date in format '20200201'
+        Values: [
+            { time: ${timestamp in seconds}, state: 'k_positve' }
+            { time: ${timestamp in seconds}, state: 'k_negative' }
+        ]
+        """
+        return [
+            {
+                'date': '20190102',
+                'state': 'k_positive'
+            },
+            {
+                'date': '20190103',
+                'state': 'k_negative'
+            },
+        ]
+
+    async def get_results_by_date(self, date):
+        return [{
+            'time': time(),
+            'state': 'k_positive'
+        }, {
+            'time': time(),
+            'state': 'k_negative'
+        }]

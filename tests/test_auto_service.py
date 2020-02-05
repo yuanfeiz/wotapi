@@ -1,3 +1,5 @@
+from wotapi.models import ResultState
+from wotapi.server import setup_app
 from wotapi.services.camera import CameraService
 from wotapi.services.task import TaskService
 from wotapi.services import AutoService
@@ -6,13 +8,10 @@ import asyncio
 from configparser import ConfigParser
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock
 import unittest
+from aiohttp import web
 
 config = ConfigParser()
-config.read_dict({
-    "auto": {
-        "start_auto_mode_script_path": "tests/resources/mock_auto_mode.py"
-    }
-})
+config.read('config.test.ini')
 
 
 @pytest.fixture()
@@ -102,3 +101,33 @@ async def test_run_period_error(auto_service: AutoService,
         assert item['mode'] == 'period'
         if exp[0] == 'abort':
             assert 'StopAsyncIteration()' in item['msg']
+
+
+async def test_api_get_auto_mode_all_results(aiohttp_client, mocker):
+    mocker.patch('wotapi.server.on_startup')
+    app = setup_app(web.Application(), config)
+    cli = await aiohttp_client(app)
+
+    resp = await cli.get('/auto/results')
+    ret = await resp.json()
+    results = ret['results']
+    assert len(results) > 0
+    import re
+    for r in results:
+        assert re.search(r'\d{8}', r['date']) is not None
+        ResultState(r['state'])
+
+
+async def test_api_get_auto_mode_results_by_date(aiohttp_client, mocker):
+    mocker.patch('wotapi.server.on_startup')
+    app = setup_app(web.Application(), MagicMock())
+    cli = await aiohttp_client(app)
+
+    resp = await cli.get('/auto/results/20200103')
+    ret = await resp.json()
+    results = ret['results']
+    assert len(results) > 0
+    import re
+    for r in results:
+        assert r['time'] > 0
+        ResultState(r['state'])

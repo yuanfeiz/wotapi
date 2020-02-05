@@ -36,9 +36,6 @@ class TaskService:
                 logger.info(f"Read line {line}, put to the queue: {queue}")
                 if queue and len(line) > 0:
                     await queue.put(line)
-
-            if queue:
-                await queue.put(TaskDone)
             return await proc.wait()
         except asyncio.CancelledError as e:
             logger.warning(

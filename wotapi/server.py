@@ -1,4 +1,5 @@
 import asyncio
+from multiprocessing import Value
 from pathlib import Path
 
 import aiohttp_cors
@@ -15,7 +16,7 @@ from wotapi.services import (
 )
 from wotapi.socket_io import socket_io
 from wotapi.utils import logger
-from wotapi.views import routes
+from wotapi.views import all_routes
 import os
 
 
@@ -28,9 +29,7 @@ def sanity_check(app):
     assert camera_service.connected()
 
 
-async def on_startup(app):
-    sanity_check(app)
-
+async def setup_feeds(app):
     camera_service: CameraService = app["camera_service"]
     await camera_service.init_subscribers()
 
@@ -59,8 +58,12 @@ async def on_startup(app):
         async for reading in sensor_service.on_reading():
             await socket_io.emit("on_sensor_reading", reading.to_json())
 
-    asyncio.create_task(start_feeds())
-    asyncio.create_task(
+    app['feeds'] = []
+
+    t = asyncio.create_task(start_feeds())
+    app['feeds'].append(t)
+
+    t = asyncio.create_task(
         asyncio.wait(
             {
                 sub_intensity_feed(),
@@ -69,6 +72,23 @@ async def on_startup(app):
             },
             return_when=asyncio.FIRST_EXCEPTION,
         ))
+    app['feeds'].append(t)
+
+
+async def on_startup(app):
+    sanity_check(app)
+    await setup_feeds(app)
+
+
+async def on_cleanup(app):
+    feeds = app.get('feeds', [])
+    for task in feeds:
+        # logger.info(f'stopping {task.get_coro()}')
+        task.cancel()
+    try:
+        await asyncio.wait(feeds)
+    except ValueError as e:
+        logger.error(e)
 
 
 # Setup CORS
@@ -123,7 +143,7 @@ def setup_app(app, config):
     # Setup routers
     app = setup_services(app, config)
 
-    app.add_routes(routes)
+    app.add_routes(all_routes)
     app.add_routes([web.static("/assets", "./assets", show_index=True)])
 
     # not to add static files during CI
@@ -132,6 +152,7 @@ def setup_app(app, config):
             [web.static("/app", "../wotapp/dist/", show_index=True)])
 
     app.on_startup.append(on_startup)
+    app.on_cleanup.append(on_cleanup)
 
     setup_cors(app)
     setup_socket_io(app)
