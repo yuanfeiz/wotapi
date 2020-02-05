@@ -13,7 +13,7 @@ async def notify_done(t: asyncio.Task):
     tid = t.get_name()
     try:
         ret = await t
-        logger.debug(f"task {tid} completed: {ret}")
+        logger.info(f"task {tid} completed: {ret}")
         await socket_io.emit(
             "task_state",
             {

@@ -2,6 +2,7 @@ import asyncio
 from pathlib import Path
 from wotapi.utils import id_factory, logger
 from typing import Mapping, MutableMapping
+import io
 
 TaskDone = "--END--"
 
@@ -25,21 +26,36 @@ class TaskService:
         cmd = f"python -u {script_path} {args}"
 
         proc = await asyncio.create_subprocess_shell(
-            cmd, stdout=asyncio.subprocess.PIPE
+            cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
-        logger.info(f"Start executing {cmd}")
+        logger.info(f"Executing --- {cmd}({proc.pid})")
 
         try:
             while not proc.stdout.at_eof():
                 data = await proc.stdout.readline()
                 line = data.decode("utf8").strip()
-                logger.info(f"Read line {line}, put to the queue: {queue}")
+                logger.info(f"({filename}) >>> {line}")
                 if queue and len(line) > 0:
                     await queue.put(line)
-            return await proc.wait()
+            exit_code = await proc.wait()
+            logger.info(f'Finished ---- {cmd}({proc.pid}) {exit_code=}')
+
+            # raise exception if exit_code is not 0
+            if exit_code != 0:
+                msg = 'Execution abort! Reason: '
+
+                # all stderr msg is buffered
+                while not proc.stderr.at_eof():
+                    data = await proc.stderr.readline()
+                    line = data.decode("utf8").strip()
+                    logger.error(f"({filename}) >>> {line}")
+                    msg += line
+                raise Exception(msg)
+            
+            return exit_code
         except asyncio.CancelledError as e:
             logger.warning(
-                f"Cancel script executing {script_path}, pid={proc.pid}"
+                f"Cancel process {cmd}({proc.pid})"
             )
             # Return the CancelledError to terminal the queue
             if queue:
@@ -82,4 +98,7 @@ class TaskService:
         if exit_code != 0:
             raise Exception(f"unexpected {exit_code=}")
         return exit_code
+
+    def get(self, tid: str) -> asyncio.Task:
+        return self.running_tasks[tid]
 

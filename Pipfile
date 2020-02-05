@@ -36,6 +36,7 @@ json-tricks = "*"
 coloredlogs = "*"
 lazy-load = "*"
 pytest-only = "*"
+loguru = "*"
 
 [requires]
 python_version = "3.8"

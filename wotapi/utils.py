@@ -1,14 +1,16 @@
 import logging
-from logging.handlers import TimedRotatingFileHandler
+# from logging.handlers import TimedRotatingFileHandler
 from shortid import ShortId
 from pathlib import Path
-
+from loguru import logger
+'''
 # Logger
 logger = logging.getLogger("wotapi")
 
 # StreamHandler
 sh = logging.StreamHandler()
-fmt_str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+fmt_str = "%(asctime)s | %(name)s [%(levelname)s] - %(message)s"
+%d{yyyy-MM-dd} | %d{HH:mm:ss.SSS} | %thread | %5p | %logger{25} | %12(ID: %8mdc{id}) | %m%n
 fmt = logging.Formatter(fmt_str)
 sh.setFormatter(fmt)
 sh.setLevel(logging.INFO)
@@ -23,6 +25,7 @@ fh.setLevel(logging.DEBUG)
 logger.addHandler(fh)
 
 logger.setLevel(logging.DEBUG)
+'''
 
 logging.getLogger("engineio.server").setLevel(logging.WARNING)
 logging.getLogger("socketio.server").setLevel(logging.WARNING)

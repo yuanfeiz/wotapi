@@ -3,31 +3,24 @@ HTTP endpoints
 """
 import asyncio
 import time
+
+from multidict import MultiMapping
 from wotapi.models import EventTopics, TaskState
 from aiohttp import web
 
 from wotapi.services import (
-    AutoService,
-    DetectorService,
-    SettingService,
     TaskService,
-    TaskDone,
     CameraService,
     MachineService,
-)
-from wotapi.views.log_parser import (
-    LogParser,
-    RunProgressParser,
-    SchedulerEventParser,
 )
 from wotapi.services import image
 from wotapi.utils import logger
 from wotapi.socket_io import socket_io
 from wotapi.utils import id_factory
-import paco
 from aiohttp import MultipartWriter
 from .settings import routes as settings_routes
 from .automode import routes as automode_routes
+from .concentration import routes as concentration_routes
 
 routes = web.RouteTableDef()
 
@@ -35,31 +28,6 @@ routes = web.RouteTableDef()
 @routes.get("/status")
 async def status(request):
     return web.json_response({"status": "ok"})
-
-
-@routes.post("/concentration/tasks")
-async def submit_concentration_task(request):
-    payload = await request.json()
-    action = payload["action"]
-    task_service: TaskService = request.app["task_service"]
-    queue = asyncio.Queue()
-    tid = await task_service.submit(action, queue)
-    return web.json_response({"id": tid})
-
-
-@routes.delete(r"/concentration/tasks/{tid}")
-async def cancel_concentration_task(request):
-    tid = request.match_info.get("tid")
-    task_service: TaskService = request.app["task_service"]
-    try:
-        await task_service.cancel(tid)
-        return web.json_response({"status": "ok"})
-    except Exception as e:
-        return web.json_response({
-            "status": "error",
-            "msg": str(e)
-        },
-                                 status=500)
 
 
 async def write_new_parts(data, boundary, response):
@@ -227,4 +195,6 @@ async def cancel_task(request):
     return web.json_response({"id": tid, "cancelled": cancelled})
 
 
-all_routes = [*routes, *settings_routes, *automode_routes]
+all_routes = [
+    *routes, *settings_routes, *automode_routes, *concentration_routes
+]
