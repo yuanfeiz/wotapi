@@ -3,7 +3,9 @@ import copy
 import shutil
 from collections import Counter
 from pathlib import Path
+from wotapi.models import EventLogType, EventTopics, TaskState
 from lazy_load import lazy_func, lazy
+from ..async_pubsub import AMemoryPubSub, MemoryPubSub
 
 import rpyc
 
@@ -22,6 +24,7 @@ class DetectorService:
         ]
         self.conn = self._get_conn()
         self.rpc = lazy(lambda: self.conn.root)
+        self.hub: MemoryPubSub = AMemoryPubSub(asyncio.Queue)
 
     @lazy_func
     def _get_conn(self):
@@ -49,9 +52,15 @@ class DetectorService:
             logger.error(f'Detector RPC is down! ({host}:{port})')
             return False
 
+    def _event(self, event: str, value=None):
+        tid = asyncio.current_task().get_name()
+        return {'id': tid, 'event': event, 'value': value}
+
     async def start(self, path, monitor_mode):
         try:
-            logger.info(f"start CG detection: {path=}")
+            logger.info(f"start CG detection: {path=} {monitor_mode=}")
+            await self.hub.publish(EventTopics.State,
+                                   self._event(TaskState.Ongoing.value))
 
             # these calls can be blocking, consider run_in_executor
             self.rpc.stopDetector()
@@ -81,6 +90,10 @@ class DetectorService:
                     progress_value += 3
                 else:
                     progress_value = (posi[0] + 1) / posi[1] * 100.0
+
+                await self.hub.publish(
+                    EventTopics.Logs,
+                    self._event(EventLogType.Progress, progress_value))
 
                 logger.info(f"detection progress: {progress_value}")
 
@@ -120,9 +133,13 @@ class DetectorService:
             logger.info(f"completed CG detection: {counter}")
         except Exception as e:
             logger.error(f"failed to run detector: {e}")
+            await self.hub.publish(EventTopics.State,
+                                   self._event(TaskState.Failed.value))
         finally:
             await asyncio.sleep(2)
             await self.stop()
+            await self.hub.publish(EventTopics.State,
+                                   self._event(TaskState.Completed.value))
 
     async def stop(self):
         self.rpc.stopDetector()

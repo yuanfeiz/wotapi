@@ -56,7 +56,9 @@ class TaskService:
         self.create_task(self._run_script(filename, queue, **kwargs), tid)
         return tid
 
-    def create_task(self, coro, tid: str) -> asyncio.Task:
+    def create_task(self, coro, tid: str = None) -> asyncio.Task:
+        if tid is None:
+            tid = id_factory.get()
         task = asyncio.create_task(coro, name=tid)
         self.running_tasks[tid] = task
         return task

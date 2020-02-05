@@ -1,5 +1,6 @@
 import asyncio
 import time
+from wotapi.models import TaskState
 
 from aiohttp import web
 import paco
@@ -34,8 +35,10 @@ async def start_auto_mode_task(request):
         ]))
 
     return web.json_response({
-        "state": "k_queued",
         "id": tid,
+        "state": TaskState.Queued.value,
+        'mode': mode,
+        'options': data,
         "startedAt": time.time()
     })
 

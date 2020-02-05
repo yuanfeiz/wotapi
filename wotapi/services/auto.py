@@ -1,5 +1,6 @@
 import asyncio
 from time import time
+from wotapi.models import EventTopics
 from ..utils import id_factory, logger
 import typing
 from datetime import datetime, timedelta
@@ -49,6 +50,10 @@ class AutoService:
 
         return interval_secs, defer_secs
 
+    async def reset_progress(self):
+        for k in ['CT', 'PD', 'IC']:
+            await self.hub.publish('c_worker', f'STAT:{k} 0')
+
     async def schedule(
         self, mode: str, **kwargs
     ) -> typing.Tuple[str, AMemorySubscriber, AMemorySubscriber]:
@@ -62,6 +67,8 @@ class AutoService:
         scheduler_sub = await self.hub.subscribe("c_scheduler")
         # for emitting worker events
         worker_sub = await self.hub.subscribe("c_worker")
+
+        await self.reset_progress()
 
         if mode == "single":
             self.running_task = self.task_service.create_task(
@@ -152,7 +159,8 @@ class AutoService:
             await paco.interval(_run_once, interval=interval_secs)()
         except asyncio.CancelledError:
             await self.hub.publish("c_scheduler", event("finish", idx))
-            logger.info(f"Stopped run_multiple({tid}), ran for {idx} times")
+            logger.exception(
+                f"Stopped run_multiple({tid}), ran for {idx} times")
         except Exception as e:
             logger.error(e)
             raise e
@@ -214,20 +222,23 @@ class AutoService:
         """
         return [
             {
-                'date': '20190102',
+                'date': '20200205',
                 'state': 'k_positive'
             },
             {
-                'date': '20190103',
+                'date': '20200203',
+                'state': 'k_negative'
+            },
+            {
+                'date': '20200204',
                 'state': 'k_negative'
             },
         ]
 
     async def get_results_by_date(self, date):
-        return [{
+        import random
+        res = [{
             'time': time(),
-            'state': 'k_positive'
-        }, {
-            'time': time(),
-            'state': 'k_negative'
-        }]
+            'state': random.choice(['k_positive', 'k_negative'])
+        } for i in range(random.randint(3, 10))]
+        return res

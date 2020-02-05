@@ -3,6 +3,7 @@ HTTP endpoints
 """
 import asyncio
 import time
+from wotapi.models import EventTopics, TaskState
 from aiohttp import web
 
 from wotapi.services import (
@@ -34,35 +35,6 @@ routes = web.RouteTableDef()
 @routes.get("/status")
 async def status(request):
     return web.json_response({"status": "ok"})
-
-
-@routes.post("/detection/tasks")
-async def start_detection(request):
-    json = await request.json()
-    rid = id_factory.generate()
-    detection_service: DetectorService = request.app["detection_service"]
-
-    # Emit progress pct to UI
-    async def emit_progress_events():
-        async for pct in detection_service.get_progress_events():
-            await socket_io.emit("detection_progress_event", {
-                "rid": rid,
-                "pct": pct
-            })
-
-    socket_io.start_background_task(emit_progress_events)
-
-    return web.json_response({
-        "status": "ok",
-        "rid": rid,
-        "request_body": json
-    })
-
-
-@routes.delete(r"/detection/tasks/{tid:\w+}")
-async def stop_detection(request):
-    tid = request.match_info.get("tid")
-    return web.json_response({"status": "ok", "tid": tid})
 
 
 @routes.post("/concentration/tasks")
@@ -214,14 +186,17 @@ async def publish_task_cancel_update(task: asyncio.Task):
         # wait for the task to finish clean up
         await task
         # succeed cancelling the task
-        await socket_io.emit("task_state", {"id": tid, "state": "k_cancelled"})
+        await socket_io.emit(EventTopics.State, {
+            "id": tid,
+            "state": TaskState.Cancelled
+        })
     except Exception as e:
         # cancellation went wrong..
         await socket_io.emit(
-            "task_state",
+            EventTopics.State,
             {
                 "id": tid,
-                "state": "k_cancel_failed",
+                "state": TaskState.Failed,
                 "msg": str(e)
             },
         )

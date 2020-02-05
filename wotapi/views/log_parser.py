@@ -1,3 +1,4 @@
+from wotapi.models import EventLogType
 from wotapi.utils import logger
 import abc
 
@@ -5,7 +6,6 @@ import abc
 class LogParser(metaclass=abc.ABCMeta):
     """Abstract Parser
     """
-
     @abc.abstractmethod
     def parse(self, item):
         pass
@@ -26,8 +26,8 @@ class RunProgressParser(LogParser):
 
     mapping = {
         "CT": "concentration",
-        "PD": "particles_capturing",
-        "IC": "particles_detection",
+        "PD": "capturing",
+        "IC": "detection",
     }
 
     def __init__(self):
@@ -40,7 +40,7 @@ class RunProgressParser(LogParser):
             logger.debug(f"Ignore line: {line}")
             return
 
-        c = line[len("STAT:") :]
+        c = line[len("STAT:"):]
 
         if c == "START":
             self.reset()
@@ -51,7 +51,7 @@ class RunProgressParser(LogParser):
             # Convert progress values to integer
             v = int(v)
             self.progress[self.mapping[k]] = v
-        return {"event": "progress", "progress": self.progress}
+        return {"event": EventLogType.Progress, "value": self.progress}
 
     def reset(self, pct=0):
         for v in self.mapping.values():
