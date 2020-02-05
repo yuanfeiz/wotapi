@@ -13,6 +13,7 @@ from tenacity import (
     retry_if_exception_type,
     wait_exponential,
 )
+from typing import Tuple
 from lazy_load import lazy_func, lazy
 
 from wotapi.async_pubsub import AMemoryPubSub
@@ -237,7 +238,7 @@ class CameraService:
                 await classify_task
             logger.info('completed start autoflow task')
 
-    async def start_manual_capturing(self) -> (str, asyncio.Queue):
+    async def start_manual_capturing(self) -> Tuple[str, asyncio.Queue]:
         settings = await self.setting_service.get()
         queue = asyncio.Queue()
 

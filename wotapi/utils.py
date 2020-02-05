@@ -3,6 +3,7 @@ import logging
 from shortid import ShortId
 from pathlib import Path
 from loguru import logger
+import sys
 '''
 # Logger
 logger = logging.getLogger("wotapi")
@@ -26,6 +27,9 @@ logger.addHandler(fh)
 
 logger.setLevel(logging.DEBUG)
 '''
+
+# ban it for too noisy..
+logger.configure(activation=[('wotapi.views.images', False)])
 
 logging.getLogger("engineio.server").setLevel(logging.WARNING)
 logging.getLogger("socketio.server").setLevel(logging.WARNING)

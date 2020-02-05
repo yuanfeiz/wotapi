@@ -1,6 +1,6 @@
 import time
 from multiprocessing.managers import BaseManager
-
+from wotapi.services.image import frombuffer
 import numpy as np
 import rpyc
 
@@ -36,8 +36,6 @@ def test_status_queue():
     status_queue = queue_mgt.status_queue()
     cmd_queue = queue_mgt.cmd_queue()
 
-    srv = ImageService()
-
     c = Camera()
     camera_info = c.get_info()
     h, w = camera_info["H"], camera_info["W"]
@@ -46,11 +44,11 @@ def test_status_queue():
         print(s.keys())
         millisecs = int(time.time() * 1000)
         if "CIMG" in s:
-            img = srv.frombuffer(s["CIMG"], h, w)
+            img = frombuffer(s["CIMG"], h, w)
             with open(f"assets/cimg-{millisecs}.png", "wb+") as f:
                 img.save(f, format="png")
         elif "TIMG" in s:
-            img = srv.frombuffer(s["TIMG"], h, w)
+            img = frombuffer(s["TIMG"], h, w)
             with open(f"assets/timg-{millisecs}.png", "wb+") as f:
                 img.save(f, format="png")
 
@@ -63,4 +61,4 @@ def test_detector():
 
 
 if __name__ == "__main__":
-    test_detector()
+    test_status_queue()

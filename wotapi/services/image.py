@@ -6,7 +6,6 @@ import io
 
 
 def frombuffer(buffer, h: int = 488, w: int = 648):
-    logger.debug(f"processing image {h=} {w=}")
     obj = np.frombuffer(buffer, dtype=np.uint8)
     obj = obj.reshape((h, w))
     img = Image.fromarray(obj)
@@ -16,7 +15,10 @@ def frombuffer(buffer, h: int = 488, w: int = 648):
 
 
 def blank_image(H: int = 488, W: int = 648):
+    # create new iamge
     img = Image.new("L", (W, H))
+
+    # draw a timed watermark shows it's being updating
     msg = "LOADING..."
     draw = ImageDraw.Draw(img)
     w, h = draw.textsize(msg)
