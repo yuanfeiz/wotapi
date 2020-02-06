@@ -6,6 +6,7 @@ __pycache__/
 assets/*.png
 .vscode
 .DS_*
+config.prod.ini
 
 memory-profile.png
 mprofile_*.dat
