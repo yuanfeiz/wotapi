@@ -73,6 +73,9 @@ class TaskService:
         return tid
 
     def create_task(self, coro, tid: str = None) -> asyncio.Task:
+        """
+        Create task with uuid and keep track of it in the task registry
+        """
         if tid is None:
             tid = id_factory.get()
         task = asyncio.create_task(coro, name=tid)

@@ -1,6 +1,8 @@
+from typing import Any, Counter, Mapping
 from wotapi.models import EventLogType
 from wotapi.utils import logger
 import abc
+from json_tricks import dumps, loads
 
 
 class LogParser(metaclass=abc.ABCMeta):
@@ -56,3 +58,24 @@ class RunProgressParser(LogParser):
     def reset(self, pct=0):
         for v in self.mapping.values():
             self.progress[v] = pct
+
+
+class DetectionMuxLogParser(LogParser):
+    """
+    A multiplixer for detection service generating logs
+    """
+    def parse(self, record: Mapping[str, Any]):
+        """
+        Record is allowed to contain non JSON serializable values,
+        it will be handled by json-tricks which acts as the default encoder
+        defined in socket_io.py
+        """
+        logger.debug(f'parse {record=}')
+        return record
+
+        # rtype: EventLogType = record['event']
+        # if rtype == EventLogType.Progress.value:
+        #     # TODO: use jsontricks?
+        #     return record
+        # elif rtype == EventLogType.Results.value:
+        #     return json_tricks.loads(json_tricks.dumps(record))

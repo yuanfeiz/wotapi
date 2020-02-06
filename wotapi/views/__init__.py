@@ -23,6 +23,7 @@ from .automode import routes as automode_routes
 from .concentration import routes as concentration_routes
 from .images import routes as images_routes
 from .capturing import routes as capturing_routes
+from .detection import routes as detection_routes
 
 routes = web.RouteTableDef()
 
@@ -93,5 +94,5 @@ async def cancel_task(request):
 
 all_routes = [
     *routes, *settings_routes, *automode_routes, *concentration_routes,
-    *images_routes, *capturing_routes
+    *images_routes, *capturing_routes, *detection_routes
 ]

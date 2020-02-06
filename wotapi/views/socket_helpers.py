@@ -43,3 +43,5 @@ async def notify_updated(tid: str, sub: Subscriber, parser: LogParser):
             await socket_io.emit("task_logs", ret)
     except asyncio.CancelledError:
         logger.debug(f"progress for {tid} is canceled")
+    except Exception as e:
+        logger.error(f'failed to emit task logs: {e}', debug=True)

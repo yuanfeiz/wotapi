@@ -19,6 +19,12 @@ class EventTopics:
     Logs = 'task_logs'
 
 
-class EventLogType:
+class EventLogType(Enum):
+    # Progress in percentage
     Progress = 'k_progress'
+
+    # Raw logs
     Info = 'k_info'
+
+    # Current results
+    Results = 'k_results'
