@@ -18,8 +18,9 @@ class SensorService:
         self.sampling_freq = sampling_freq
 
     async def get_reading_from_filesystem(self, path):
-        print(path)
-        print(dir_path = os.path.dirname(os.path.realpath(__file__)))
+        logger.debug(path)
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        logger.debug(dir_path)
         
         async with aiofiles.open(path, "r+") as f:
             content = await f.readlines()
