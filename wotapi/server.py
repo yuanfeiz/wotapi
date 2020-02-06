@@ -110,15 +110,16 @@ def setup_socket_io(app):
     socket_io.attach(app)
 
 
-def setup_services(app, config):
+def setup_services(app, config, apath):
 
     app["detector_service"] = DetectorService(config)
 
     path = Path(config.get("setting_service", "path"))
-    app["setting_service"] = SettingService(path)
+
+    app["setting_service"] = SettingService(apath + str(path))
 
     path = Path(config.get("task_service", "path"))
-    app["task_service"] = TaskService(path)
+    app["task_service"] = TaskService(apath + str(path))
 
     # Inject task_service and setting_service into the CameraService
     app["camera_service"] = CameraService(
@@ -134,14 +135,14 @@ def setup_services(app, config):
                                             app["setting_service"])
 
     path = config.get("sensor_service", "PATH")
-    app["sensor_service"] = SensorService(path, sampling_freq=0.5)
+    app["sensor_service"] = SensorService( apath + str(path), sampling_freq=0.5)
 
     return app
 
 
-def setup_app(app, config):
+def setup_app(app, config, apath):
     # Setup routers
-    app = setup_services(app, config)
+    app = setup_services(app, config, apath)
 
     app.add_routes(all_routes)
     app.add_routes([web.static("/assets", "./assets", show_index=True)])
