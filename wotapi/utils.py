@@ -30,6 +30,10 @@ logger.setLevel(logging.DEBUG)
 
 # ban it for too noisy..
 logger.configure(activation=[('wotapi.views.images', False)])
+logger.add("/tmp/logs/wotapi.log",
+           rotation="500 MB",
+           retention="7 days",
+           compression="zip")
 
 logging.getLogger("engineio.server").setLevel(logging.WARNING)
 logging.getLogger("socketio.server").setLevel(logging.WARNING)
