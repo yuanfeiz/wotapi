@@ -4,6 +4,7 @@ from wotapi.models import TaskState
 from aiohttp import web
 from wotapi.server import setup_app
 import pytest
+import time
 
 config = ConfigParser()
 config.read('config.test.ini')
@@ -23,3 +24,4 @@ async def test_control_syringe_pump(aiohttp_client, mocker):
     resp_json = await resp.json()
     assert TaskState(resp_json['state']) == TaskState.Completed
     assert 'id' in resp_json
+    assert time.time() - resp_json['startedAt'] < 1

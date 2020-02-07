@@ -5,6 +5,7 @@ from ..utils import logger, id_factory
 import asyncio
 from .socket_helpers import notify_done, notify_updated
 from .helpers import json_response
+import time
 
 routes = web.RouteTableDef()
 
@@ -17,7 +18,11 @@ async def _operate_machine(request: web.Request, coro) -> web.Response:
     logger.debug("Waiting for task to finish")
     await task_service.running_tasks[tid]
 
-    return json_response({"id": tid, "state": TaskState.Completed})
+    return json_response({
+        "id": tid,
+        "state": TaskState.Completed,
+        "startedAt": time.time()
+    })
 
 
 @routes.post("/tasks/capturing/laser")
