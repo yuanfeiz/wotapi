@@ -1,5 +1,6 @@
 from aiohttp import web
 from wotapi.services import SettingService, CameraService
+from .helpers import json_response
 
 routes = web.RouteTableDef()
 
@@ -7,7 +8,7 @@ routes = web.RouteTableDef()
 @routes.get("/settings")
 async def get_settings(request):
     setting_service: SettingService = request.app["setting_service"]
-    return web.json_response({
+    return json_response({
         "settings": await setting_service.get(),
         "meta": {
             "path": str(setting_service.path)
@@ -40,4 +41,4 @@ async def update_settings(request):
         new_value = new_settings["CAMERA"]["GAIN"][1]
         await camera_service.update_camera_gain(new_value)
 
-    return web.json_response({"status": "ok", "settings": new_settings})
+    return json_response({"status": "ok", "settings": new_settings})
