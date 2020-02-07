@@ -1,6 +1,6 @@
 from aiohttp import web
 from wotapi.services import SettingService, CameraService
-from .helpers import json_response
+from ..libs.json_helpers import json_response
 
 routes = web.RouteTableDef()
 

@@ -24,7 +24,7 @@ from .concentration import routes as concentration_routes
 from .images import routes as images_routes
 from .capturing import routes as capturing_routes
 from .detection import routes as detection_routes
-from .helpers import json_response
+from ..libs.json_helpers import json_response
 
 routes = web.RouteTableDef()
 

@@ -14,6 +14,7 @@ def enum_instance_encode(obj):
         return obj.value
 
 
+loads = json_tricks.loads
 dumps = partial(json_tricks.dumps,
                 obj_encoders=[enum_instance_encode],
                 primitives=True)

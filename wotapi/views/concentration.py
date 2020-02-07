@@ -4,7 +4,7 @@ from aiohttp import web
 import asyncio
 from ..services import TaskService
 from .socket_helpers import notify_done
-from .helpers import json_response
+from ..libs.json_helpers import json_response
 
 routes = web.RouteTableDef()
 

@@ -9,7 +9,7 @@ from ..services import AutoService, TaskService
 from ..utils import logger
 from .log_parser import RunProgressParser, SchedulerEventParser
 from .socket_helpers import notify_done, notify_updated
-from .helpers import json_response
+from ..libs.json_helpers import json_response
 
 routes = web.RouteTableDef()
 

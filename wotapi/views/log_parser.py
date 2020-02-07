@@ -51,7 +51,7 @@ class RunProgressParser(LogParser):
         else:
             k, v = c.split()
             # Convert progress values to integer
-            v = int(v)
+            v = float(v)
             self.progress[self.mapping[k]] = v
         return {"event": EventLogType.Progress, "value": self.progress}
 
