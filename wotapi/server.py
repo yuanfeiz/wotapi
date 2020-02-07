@@ -73,6 +73,7 @@ async def setup_feeds(app):
             return_when=asyncio.FIRST_EXCEPTION,
         ))
     app['feeds'].append(t)
+    return app
 
 
 async def on_startup(app):

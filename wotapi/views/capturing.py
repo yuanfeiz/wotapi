@@ -1,8 +1,10 @@
+from wotapi.models import TaskState
 from aiohttp import web
 from ..services import TaskService, MachineService, CameraService
 from ..utils import logger, id_factory
 import asyncio
 from .socket_helpers import notify_done, notify_updated
+from .helpers import json_response
 
 routes = web.RouteTableDef()
 
@@ -15,7 +17,7 @@ async def _operate_machine(request: web.Request, coro) -> web.Response:
     logger.debug("Waiting for task to finish")
     await task_service.running_tasks[tid]
 
-    return web.json_response({"id": tid, "status": "done"})
+    return json_response({"id": tid, "state": TaskState.Completed})
 
 
 @routes.post("/tasks/capturing/laser")
@@ -33,7 +35,7 @@ async def start_cpzt(request):
 @routes.post("/tasks/capturing/syringe_pump")
 async def control_syringe_pump(request):
     machine_service: MachineService = request.app["machine_service"]
-    action = (await request.json())["action"]
+    action = (await request.json())["value"]
     assert action in ["infuse", "withdraw", "stop"], f"{action=} is invalid"
 
     return await _operate_machine(request,
@@ -45,7 +47,7 @@ async def reset_particle_count(request):
     camera_service: CameraService = request.app["camera_service"]
     await camera_service.reset_particle_count()
     tid = id_factory.get()
-    return web.json_response({"id": tid, "status": "done"})
+    return json_response({"id": tid, "status": "done"})
 
 
 @routes.post("/tasks/capturing/capturing")
@@ -55,7 +57,7 @@ async def submit_capturing_task(request):
     tid, queue = await camera_service.start_manual_capturing()
     t = task_service.get(tid)
     asyncio.create_task(notify_done(t))
-    return web.json_response({"id": tid})
+    return json_response({"id": tid})
 
 
 @routes.post(r"/tasks/capturing/{action}")
@@ -69,4 +71,4 @@ async def submit_clean_task(request):
 
     asyncio.create_task(notify_done(t))
 
-    return web.json_response({"id": tid})
+    return json_response({"id": tid})

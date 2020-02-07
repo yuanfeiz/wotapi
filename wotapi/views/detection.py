@@ -1,12 +1,13 @@
 from wotapi.views.log_parser import DetectionMuxLogParser
 from wotapi.models import EventTopics, TaskState
 from wotapi.services.task import TaskService
-from aiohttp import web
 from ..utils import id_factory
 from ..socket_io import socket_io
 from ..services import DetectorService
 from .socket_helpers import *
+from .helpers import json_response
 import paco
+from aiohttp import web
 
 routes = web.RouteTableDef()
 
@@ -28,7 +29,7 @@ async def start_detection(request):
         paco.race([notify_done(t),
                    notify_updated(tid, sub, mux_log_parser)]))
 
-    return web.json_response({
+    return json_response({
         'id': tid,
         "state": TaskState.Queued.value,
     })

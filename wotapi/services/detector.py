@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import MutableMapping, Union
 from wotapi.models import EventLogType, EventTopics, TaskState
 from lazy_load import lazy_func, lazy
-from ..async_pubsub import AMemoryPubSub, MemoryPubSub
+from ..async_pubsub import AMemoryPubSub
+from aio_pubsub.interfaces import PubSub
 from itertools import groupby
 
 import rpyc
@@ -30,7 +31,7 @@ class DetectorService:
         ]
         self.conn = self._get_conn()
         self.rpc = lazy(lambda: self.conn.root)
-        self.hub: MemoryPubSub = AMemoryPubSub(asyncio.Queue)
+        self.hub: PubSub = AMemoryPubSub(asyncio.Queue)
 
     @lazy_func
     def _get_conn(self):

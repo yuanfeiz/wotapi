@@ -1,7 +1,7 @@
 import asyncio
 from configparser import ConfigParser
 import logging
-from multiprocessing import queues
+from queue import Empty, Queue
 from multiprocessing.managers import BaseManager
 from contextlib import contextmanager
 
@@ -109,17 +109,17 @@ class CameraService:
 
     @retry(
         wait=wait_exponential(multiplier=0.5, max=60),
-        retry=retry_if_exception_type(queues.Empty),
+        retry=retry_if_exception_type(Empty),
         # before_sleep=before_sleep_log(logger, logging.DEBUG),
     )
-    async def get_item(self, queue: queues.Queue):
+    async def get_item(self, queue: Queue):
         return queue.get_nowait()
 
     @retry(
         wait=wait_exponential(max=60),
         after=after_log(logger, logging.DEBUG),
     )
-    async def put_item(self, queue: queues.Queue, item):
+    async def put_item(self, queue: Queue, item):
         logger.info(f"send command: {item=}")
         return queue.put_nowait(item)
 
