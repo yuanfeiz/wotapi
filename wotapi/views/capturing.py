@@ -12,17 +12,27 @@ routes = web.RouteTableDef()
 
 async def _operate_machine(request: web.Request, coro) -> web.Response:
     task_service: TaskService = request.app["task_service"]
+    started_at = time.time()
 
     tid = await coro
+    try:
+        logger.debug("Waiting for task to finish")
+        await task_service.running_tasks[tid]
 
-    logger.debug("Waiting for task to finish")
-    await task_service.running_tasks[tid]
-
-    return json_response({
-        "id": tid,
-        "state": TaskState.Completed,
-        "startedAt": time.time()
-    })
+        return json_response({
+            "id": tid,
+            "state": TaskState.Completed,
+            "startedAt": started_at
+        })
+    except Exception as e:
+        return json_response(
+            {
+                "id": tid,
+                'state': TaskState.Failed,
+                'startedAt': started_at,
+                'endedAt': time.time()
+            },
+            status=500)
 
 
 @routes.post("/tasks/capturing/laser")
