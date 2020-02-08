@@ -87,7 +87,7 @@ async def test_run_period_error(auto_service: AutoService,
                                        side_effect=list('may'))
     sched_sub = await auto_service.hub.subscribe('c_scheduler')
 
-    with pytest.raises(StopAsyncIteration):
+    with pytest.raises(Exception):
         await auto_service.run_period()
     assert m.await_count == 4
     expects = [
