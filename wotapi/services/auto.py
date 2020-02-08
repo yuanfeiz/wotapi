@@ -15,9 +15,10 @@ class AutoService:
     def __init__(self, config, task_service: TaskService,
                  camera_service: CameraService):
         # At most one running task at a time
-        self.running_task: asyncio.Task = None
         self.progress: typing.Dict[str, asyncio.Queue] = {}
         self.config = config
+
+        self.running_task: typing.Union[asyncio.Task, None] = None
 
         self.cached_results = {
             "past": [

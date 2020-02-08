@@ -1,7 +1,9 @@
+from wotapi.views.log_parser import SchedulerEventParser
 from wotapi.models import ResultState
 from wotapi.server import setup_app
 from wotapi.services.camera import CameraService
 from wotapi.services.task import TaskService
+from wotapi.utils import logger
 from wotapi.services import AutoService
 import pytest
 import asyncio
@@ -9,6 +11,7 @@ from configparser import ConfigParser
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock
 import unittest
 from aiohttp import web
+from wotapi.async_pubsub import AMemoryPubSub, AMemorySubscriber
 
 config = ConfigParser()
 config.read('config.test.ini')

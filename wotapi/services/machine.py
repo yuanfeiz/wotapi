@@ -14,13 +14,15 @@ class MachineService:
     async def start_laser(self) -> str:
         settings = await self.setting_service.get()
         args = {"LASER": settings["LASER"]}
-        tid = await self.task_service.submit("lasercontrol", None, **args)
+        tid = await self.task_service.create_script_task(
+            "lasercontrol", None, **args)
         return tid
 
     async def start_pzt(self) -> str:
         settings = await self.setting_service.get()
         args = {"PZ3": ",".join([str(v) for v in settings.get("CPZT")])}
-        tid = await self.task_service.submit("pzcontrol", None, **args)
+        tid = await self.task_service.create_script_task(
+            "pzcontrol", None, **args)
         return tid
 
     async def control_syringe_pump(self, action: str) -> str:
@@ -30,10 +32,11 @@ class MachineService:
         args = {"__SINGLE": [action]}
         if action in ["infuse", "withdraw"]:
             args["__SINGLE"].extend(settings["SPV"])
-        tid = await self.task_service.submit("spcontrol", None, **args)
+        tid = await self.task_service.create_script_task(
+            "spcontrol", None, **args)
         return tid
 
     async def clean(self, action: str) -> str:
         queue = asyncio.Queue()
-        tid = await self.task_service.submit(action, queue)
+        tid = await self.task_service.create_script_task(action, queue)
         return tid

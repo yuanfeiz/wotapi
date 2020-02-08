@@ -57,13 +57,10 @@ class TaskService:
             logger.warning(
                 f"Cancel process {cmd}({proc.pid})"
             )
-            # Return the CancelledError to terminal the queue
-            if queue:
-                await queue.put(e)
             proc.terminate()
             raise e
 
-    async def submit(
+    async def create_script_task(
         self, action: str, queue: asyncio.Queue = None, /, **kwargs  # noqa
     ) -> str:
         tid = id_factory.get()
@@ -95,7 +92,7 @@ class TaskService:
         except KeyError:
             raise Exception(f"task {tid} is not running")
 
-        tid = await self.submit(stop_script_filename)
+        tid = await self.create_script_task(stop_script_filename)
         # Wait for the stop script to finish
         exit_code = await self.running_tasks[tid]
         if exit_code != 0:

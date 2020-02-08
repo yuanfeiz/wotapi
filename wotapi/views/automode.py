@@ -23,15 +23,15 @@ async def start_auto_mode_task(request):
 
     tid, scheduler_sub, worker_sub = await auto_service.schedule(mode, **data)
 
-    t = task_service.running_tasks[tid]
+    t = task_service.get(tid)
     logger.debug(f"Subscribe to task({mode}/{tid}) updates")
 
     asyncio.create_task(
         # Cancel progress report when task is done(reflecting by t)
         asyncio.wait({
             notify_done(t),
-            notify_updated(tid, scheduler_sub, SchedulerEventParser()),
             notify_updated(tid, worker_sub, RunProgressParser()),
+            notify_updated(tid, scheduler_sub, SchedulerEventParser()),
         }))
 
     return json_response({

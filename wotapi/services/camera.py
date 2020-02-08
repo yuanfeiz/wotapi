@@ -179,8 +179,8 @@ class CameraService:
         }
 
         logger.debug(f"Run {script_name} with arguments: {script_args=}")
-        return await self.task_service.submit(script_name, queue,
-                                              **script_args)
+        return await self.task_service.create_script_task(
+            script_name, queue, **script_args)
 
     async def start_auto_capturing(self, queue: asyncio.Queue):
         """

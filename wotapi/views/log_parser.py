@@ -18,7 +18,7 @@ class SchedulerEventParser(LogParser):
         pass
 
     def parse(self, item):
-        return item
+        return {**item, 'parser': str(__class__)}
 
 
 class RunProgressParser(LogParser):
@@ -53,7 +53,11 @@ class RunProgressParser(LogParser):
             # Convert progress values to integer
             v = float(v)
             self.progress[self.mapping[k]] = v
-        return {"event": EventLogType.Progress, "value": self.progress}
+        return {
+            "event": EventLogType.Progress,
+            "value": self.progress,
+            'parser': str(__class__)
+        }
 
     def reset(self, pct=0):
         for v in self.mapping.values():
@@ -72,10 +76,3 @@ class DetectionMuxLogParser(LogParser):
         """
         logger.debug(f'parse {record=}')
         return record
-
-        # rtype: EventLogType = record['event']
-        # if rtype == EventLogType.Progress.value:
-        #     # TODO: use jsontricks?
-        #     return record
-        # elif rtype == EventLogType.Results.value:
-        #     return json_tricks.loads(json_tricks.dumps(record))

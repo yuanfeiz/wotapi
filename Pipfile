@@ -37,6 +37,7 @@ coloredlogs = "*"
 lazy-load = "*"
 pytest-only = "*"
 loguru = "*"
+aiojobs = "*"
 
 [requires]
 python_version = "3.8"

@@ -15,7 +15,7 @@ async def submit_concentration_task(request):
     task_service: TaskService = request.app["task_service"]
 
     # submit script task
-    tid = await task_service.submit(action)
+    tid = await task_service.create_script_task(action)
 
     # emit task progress
     asyncio.create_task(notify_done(task_service.get(tid)))

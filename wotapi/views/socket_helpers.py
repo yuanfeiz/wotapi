@@ -48,9 +48,13 @@ async def notify_updated(tid: str, sub: Subscriber, parser: LogParser):
     try:
         async for s in sub:
             ret = parser.parse(s)
-            logger.info(f"Task {tid} gets new update: {ret}")
-            await socket_io.emit("task_logs", ret)
+            logger.info(
+                f"Task {tid} gets new update: {ret=} original output: {s}")
+            if ret is not None:
+                await socket_io.emit("task_logs", ret)
     except asyncio.CancelledError:
-        logger.debug(f"progress for {tid} is canceled")
+        logger.debug(f"task log notifier for {tid} is canceled")
     except Exception as e:
         logger.error(f'failed to emit task logs: {e}')
+    finally:
+        logger.debug(f'shutdown task log notifier: {tid}')
