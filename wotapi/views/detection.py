@@ -26,8 +26,9 @@ async def start_detection(request):
     mux_log_parser = DetectionMuxLogParser()
 
     asyncio.create_task(
-        paco.race([notify_done(t),
-                   notify_updated(tid, sub, mux_log_parser)]))
+        asyncio.wait(
+            {notify_done(t),
+             notify_updated(tid, sub, mux_log_parser)}))
 
     return json_response({
         'id': tid,

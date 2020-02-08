@@ -3,7 +3,6 @@ import time
 from wotapi.models import TaskState
 
 from aiohttp import web
-import paco
 
 from ..services import AutoService, TaskService
 from ..utils import logger
