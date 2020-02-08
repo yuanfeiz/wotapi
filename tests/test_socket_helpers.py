@@ -1,5 +1,7 @@
 from typing import AsyncContextManager
 from unittest.mock import AsyncMock, MagicMock, Mock, call
+from wotapi.models import TaskState
+from wotapi.services.task import TaskService
 from wotapi.views.socket_helpers import notify_done, notify_updated
 import pytest
 import asyncio
@@ -12,12 +14,12 @@ async def test_notify_done_emit_on_ok(mocker):
     m: AsyncMock = mocker.patch('wotapi.socket_io.socket_io.emit')
     t = asyncio.create_task(asyncio.sleep(0, 'may'))
     await notify_done(t)
-    m.assert_awaited_once()
+    assert m.await_count == 2
     evt_name, evt = m.call_args.args
     assert evt_name == 'task_state'
     assert time.time() - evt['endedAt'] < 1
     assert evt['id'] == t.get_name()
-    assert evt['state'] == 'k_completed'
+    assert evt['state'] == TaskState.Completed
 
 
 @pytest.mark.asyncio
@@ -29,12 +31,12 @@ async def test_notify_done_emit_on_failed(mocker):
 
     t = asyncio.create_task(error())
     await notify_done(t)
-    m.assert_awaited_once()
+    assert m.await_count == 2
     evt_name, evt = m.call_args.args
     assert evt_name == 'task_state'
     assert time.time() - evt['endedAt'] < 1
     assert evt['id'] == t.get_name()
-    assert evt['state'] == 'k_failed'
+    assert evt['state'] == TaskState.Failed
 
 
 @pytest.mark.asyncio
