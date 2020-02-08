@@ -81,7 +81,7 @@ async def submit_clean_task(request):
     task_service: TaskService = request.app["task_service"]
     action = request.match_info["action"]
     assert action in ["chipclean_surf", "chipclean_bleach", "chipclean_bs"]
-    tid, _ = await machine_service.clean(action)
+    tid = await machine_service.clean(action)
     t = task_service.get(tid)
 
     asyncio.create_task(notify_done(t))
