@@ -24,14 +24,12 @@ def results_service():
 
 
 @pytest.mark.parametrize('month', ['1', '20200', '202021', 'aaaa0a'])
-@pytest.mark.only
 async def test_get_results_by_month_invalid_args(
     month, mocker, results_service: DetectionResultsService):
     with pytest.raises(Exception):
         await results_service.get_results_by_month(month)
 
 
-@pytest.mark.only
 async def test_get_results_by_month(mocker,
                                     results_service: DetectionResultsService):
     ret = await results_service.get_results_by_month('202002')
