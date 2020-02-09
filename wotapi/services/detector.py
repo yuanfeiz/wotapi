@@ -198,5 +198,11 @@ class DetectorService:
 
     async def stop(self):
         logger.debug('stopping detector')
-        self.rpc.stopDetector()
+        if self.debug:
+            logger.debug(
+                'in debug mode, sleep for 1s, not really stop the detector via RPC'
+            )
+            await asyncio.sleep(1)
+        else:
+            self.rpc.stopDetector()
         logger.info(f"stopped detector")

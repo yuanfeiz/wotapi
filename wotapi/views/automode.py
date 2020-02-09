@@ -28,11 +28,13 @@ async def start_auto_mode_task(request):
 
     asyncio.create_task(
         # Cancel progress report when task is done(reflecting by t)
-        asyncio.wait({
-            notify_done(t),
-            notify_updated(tid, worker_sub, RunProgressParser()),
-            notify_updated(tid, scheduler_sub, SchedulerEventParser()),
-        }))
+        asyncio.wait(
+            {
+                notify_done(t),
+                notify_updated(tid, worker_sub, RunProgressParser()),
+                notify_updated(tid, scheduler_sub, SchedulerEventParser()),
+            },
+            return_when=asyncio.FIRST_COMPLETED))
 
     return json_response({
         "id": tid,

@@ -38,6 +38,7 @@ lazy-load = "*"
 pytest-only = "*"
 loguru = "*"
 aiojobs = "*"
+inject = "*"
 
 [requires]
 python_version = "3.8"

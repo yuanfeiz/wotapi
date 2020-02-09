@@ -41,8 +41,12 @@ async def setup_feeds(app):
         await camera_service.emit_status_queue_item()
 
     async def sub_intensity_feed():
-        async for item in camera_service.intensity_stream:
-            await socket_io.emit("on_intensity_updated", item)
+        try:
+            async for item in camera_service.intensity_stream:
+                await socket_io.emit("on_intensity_updated", item)
+        except asyncio.CancelledError:
+            logger.info('unsubscribe to intensity feed')
+            raise
 
     async def sub_results_path_feed():
         feed = await camera_service.hub.subscribe("results_path")
