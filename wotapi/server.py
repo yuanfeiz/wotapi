@@ -18,9 +18,13 @@ from wotapi.socket_io import socket_io
 from wotapi.utils import logger
 from wotapi.views import all_routes
 import os
+from aiojobs.aiohttp import setup as setup_aiojobs, get_scheduler_from_app
+from wotapi.socket_views import (pub_squeue_items, sub_intensity_feed,
+                                 sub_results_path_feed,
+                                 sub_sensor_reading_feed)
 
 
-def sanity_check(app):
+async def sanity_check(app):
     # Detector Service
     detector_service: DetectorService = app['detector_service']
     assert detector_service.connected()
@@ -30,70 +34,25 @@ def sanity_check(app):
 
 
 async def setup_feeds(app):
-    camera_service: CameraService = app["camera_service"]
-    await camera_service.init_subscribers()
+    scheduler = get_scheduler_from_app(app)
+    await scheduler.spawn(pub_squeue_items(app))
+    await scheduler.spawn(sub_intensity_feed(app))
+    await scheduler.spawn(sub_results_path_feed(app))
+    await scheduler.spawn(sub_sensor_reading_feed(app))
 
-    sensor_service: SensorService = app["sensor_service"]
-    app["camera_feed"] = None
-    app["results_path_feed"] = None
-
-    async def start_feeds():
-        await camera_service.emit_status_queue_item()
-
-    async def sub_intensity_feed():
-        try:
-            async for item in camera_service.intensity_stream:
-                await socket_io.emit("on_intensity_updated", item)
-        except asyncio.CancelledError:
-            logger.info('unsubscribe to intensity feed')
-            raise
-
-    async def sub_results_path_feed():
-        feed = await camera_service.hub.subscribe("results_path")
-        app["results_path_feed"] = feed
-        async for item in feed:
-            logger.debug(item)
-            await socket_io.emit("results_path", item)
-
-    async def sub_sensor_reading_feed():
-        """
-        This should be called for only once
-        """
-        async for reading in sensor_service.on_reading():
-            await socket_io.emit("on_sensor_reading", reading.to_json())
-
-    app['feeds'] = []
-
-    t = asyncio.create_task(start_feeds())
-    app['feeds'].append(t)
-
-    t = asyncio.create_task(
-        asyncio.wait(
-            {
-                sub_intensity_feed(),
-                sub_sensor_reading_feed(),
-                sub_results_path_feed(),
-            },
-            return_when=asyncio.FIRST_EXCEPTION,
-        ))
-    app['feeds'].append(t)
     return app
 
 
 async def on_startup(app):
-    sanity_check(app)
+    await sanity_check(app)
     await setup_feeds(app)
 
 
 async def on_cleanup(app):
-    feeds = app.get('feeds', [])
-    for task in feeds:
-        # logger.info(f'stopping {task.get_coro()}')
-        task.cancel()
-    try:
-        await asyncio.wait(feeds)
-    except ValueError as e:
-        logger.error(e)
+    logger.info('clean up app')
+    scheduler = get_scheduler_from_app(app)
+    logger.info(f'closing scheduler: {scheduler}')
+    await scheduler.close()
 
 
 # Setup CORS
@@ -156,10 +115,12 @@ def setup_app(app, config):
         app.add_routes(
             [web.static("/app", "../wotapp/dist/", show_index=True)])
 
-    app.on_startup.append(on_startup)
-    app.on_cleanup.append(on_cleanup)
-
+    setup_aiojobs(app)
     setup_cors(app)
     setup_socket_io(app)
+
+    # run after setup_aiojobs
+    app.on_startup.append(on_startup)
+    app.on_cleanup.append(on_cleanup)
 
     return app

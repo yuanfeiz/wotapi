@@ -125,32 +125,38 @@ class CameraService:
 
     async def emit_status_queue_item(self):
         # Start receiving item from RPC calls
-        while True:
-            item = await self.get_item(self.status_queue)
-            # logger.debug(f"Get squeue item: keys={item.keys()}")
+        try:
+            while True:
+                item = await self.get_item(self.status_queue)
+                if item == '--EOF--':
+                    break
+                # logger.debug(f"Get squeue item: keys={item.keys()}")
 
-            # Distribute item according to its topic
-            if "CIMG" in item or "TIMG" in item:
-                await self.hub.publish("image", item)
-            elif "INT" in item:
-                await self.hub.publish(
-                    "intensity",
-                    {
-                        "samples": item["INT"][0],
-                        "stats": {
-                            "fps": item["ISTAT"][0],
-                            "lptc": item["ISTAT"][1],
+                # Distribute item according to its topic
+                if "CIMG" in item or "TIMG" in item:
+                    await self.hub.publish("image", item)
+                elif "INT" in item:
+                    await self.hub.publish(
+                        "intensity",
+                        {
+                            "samples": item["INT"][0],
+                            "stats": {
+                                "fps": item["ISTAT"][0],
+                                "lptc": item["ISTAT"][1],
+                            },
                         },
-                    },
-                )
-            elif "SPATH" in item:
-                logger.info(f'get results path: {item["SPATH"]}')
-                await self.hub.publish("results_path", item["SPATH"])
-            else:
-                logger.info(f"get unhandled item: {item}")
+                    )
+                elif "SPATH" in item:
+                    logger.info(f'get results path: {item["SPATH"]}')
+                    await self.hub.publish("results_path", item["SPATH"])
+                else:
+                    logger.info(f"get unhandled item: {item}")
 
-            wait_for = float(self.config.get("QUEUE_CONSUME_RATE"))
-            await asyncio.sleep(wait_for)
+                wait_for = float(self.config.get("QUEUE_CONSUME_RATE"))
+                await asyncio.sleep(wait_for)
+        except asyncio.CancelledError:
+            logger.info('stopped pub squeue items')
+            raise
 
     async def init_subscribers(self):
         """
