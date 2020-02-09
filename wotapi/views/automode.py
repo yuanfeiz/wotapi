@@ -4,7 +4,7 @@ from wotapi.models import TaskState
 
 from aiohttp import web
 
-from ..services import AutoService, TaskService
+from ..services import AutoService, TaskService, DetectionResultsService
 from ..utils import logger
 from .log_parser import RunProgressParser, SchedulerEventParser
 from .socket_helpers import notify_done, notify_updated
@@ -45,22 +45,26 @@ async def start_auto_mode_task(request):
     })
 
 
-@routes.get("/auto/results")
-async def get_all_results(request):
+@routes.get("/auto/results/month/{month}")
+async def get_result_by_month(request):
     """
     Historical data
 
     It's called on AutoMode page loaded as well as 
     on `onAutoModeDataUpdated` emitted
     """
-    auto_service: AutoService = request.app["auto_service"]
-    ret = await auto_service.get_all_results()
+
+    detection_results_service: DetectionResultsService = request.app[
+        'detection_results_service']
+    month = request.match_info.get('month')
+    ret = await detection_results_service.get_results_by_month(month)
     return json_response({'results': ret})
 
 
-@routes.get('/auto/results/{date}')
+@routes.get('/auto/results/day/{date}')
 async def get_result_by_date(request):
-    auto_service: AutoService = request.app["auto_service"]
     date = request.match_info['date']
-    ret = await auto_service.get_results_by_date(date)
+    detection_results_service: DetectionResultsService = request.app[
+        'detection_results_service']
+    ret = await detection_results_service.get_results_by_date(date)
     return json_response({'results': ret})

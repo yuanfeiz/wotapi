@@ -1,6 +1,7 @@
 import asyncio
 from multiprocessing import Value
 from pathlib import Path
+from wotapi.services.detection_results import DetectionResultsService
 
 import aiohttp_cors
 from aiohttp import web
@@ -96,6 +97,8 @@ def setup_services(app, config):
                                       app["camera_service"])
     app["machine_service"] = MachineService(app["task_service"],
                                             app["setting_service"])
+
+    app["detection_results_service"] = DetectionResultsService(config)
 
     path = config.get("sensor_service", "PATH")
     app["sensor_service"] = SensorService(path, sampling_freq=0.5)
