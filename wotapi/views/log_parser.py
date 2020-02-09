@@ -18,7 +18,11 @@ class SchedulerEventParser(LogParser):
         pass
 
     def parse(self, item):
-        return {**item, 'parser': str(__class__)}
+        return {
+            'event': EventLogType.Schedule,
+            'value': item,
+            'parser': str(__class__)
+        }
 
 
 class RunProgressParser(LogParser):

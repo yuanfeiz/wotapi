@@ -15,7 +15,10 @@ class TaskState(Enum):
 
 
 class EventTopics:
+    # indicates the start and end state of a task
     State = 'task_state'
+
+    # the most detailed logs from script outputs
     Logs = 'task_logs'
 
 
@@ -28,3 +31,6 @@ class EventLogType(Enum):
 
     # Current results
     Results = 'k_results'
+
+    # Schedule
+    Schedule = 'k_schedule'

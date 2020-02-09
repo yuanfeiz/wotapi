@@ -241,5 +241,5 @@ class AutoService:
         res = [{
             'time': time(),
             'state': random.choice(['k_positive', 'k_negative'])
-        } for i in range(random.randint(3, 10))]
+        } for i in range(random.randint(3, 8))]
         return res
