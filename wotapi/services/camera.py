@@ -241,7 +241,11 @@ class CameraService:
             if detector_service_connected and classify_task is not None:
                 await asyncio.sleep(3)
                 classify_task.cancel()
-                await classify_task
+                try:
+                    await classify_task
+                except asyncio.CancelledError:
+                    logger.info('Classification task is cancelled')
+                
             logger.info('completed start autoflow task')
 
     async def start_manual_capturing(self) -> Tuple[str, asyncio.Queue]:
