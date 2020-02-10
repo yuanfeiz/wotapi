@@ -117,9 +117,9 @@ class AutoService:
                 logger.info(f"Running #{idx} run_period({tid})")
                 await self._run("period", idx)
                 # wait for a while before starting next run
-                delay = self.config.get('auto_service',
-                                        'PERIOD_RUN_DELAY_SECONDS',
-                                        fallback=60)
+                delay = self.config.getint('auto_service',
+                                           'PERIOD_RUN_DELAY_SECONDS',
+                                           fallback=60)
                 await asyncio.sleep(delay)
 
                 # increase run no.
