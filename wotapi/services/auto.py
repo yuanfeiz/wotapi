@@ -100,7 +100,7 @@ class AutoService:
 
     async def run_period(self):
         tid = asyncio.current_task().get_name()
-        idx = 0
+        idx = 1
 
         def event(event, idx, msg=None):
             return {
@@ -116,6 +116,11 @@ class AutoService:
             while True:
                 logger.info(f"Running #{idx} run_period({tid})")
                 await self._run("period", idx)
+                # wait for a while before starting next run
+                delay = self.config.get('auto_service',
+                                        'PERIOD_RUN_DELAY_SECONDS',
+                                        fallback=60)
+                await asyncio.sleep(delay)
 
                 # increase run no.
                 idx += 1
