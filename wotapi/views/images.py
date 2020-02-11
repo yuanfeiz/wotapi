@@ -1,3 +1,4 @@
+from wotapi.libs.json_helpers import json_response, loads
 from aiohttp import MultipartWriter, web
 from ..utils import logger
 from ..services import CameraService, image
@@ -52,3 +53,10 @@ async def timg_feed(request) -> web.StreamResponse:
     logger.debug("Finished streaming")
 
     return response
+
+
+@routes.get('/camera')
+async def get_camera_info(request):
+    csrv: CameraService = request.app["camera_service"]
+    info = csrv.get_info()
+    return json_response({'cameraInfo': info})
