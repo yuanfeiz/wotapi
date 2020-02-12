@@ -58,3 +58,25 @@ async def notify_updated(tid: str, sub: Subscriber, parser: LogParser):
         logger.error(f'failed to emit task logs: {e}')
     finally:
         logger.debug(f'shutdown task log notifier: {tid}')
+
+
+async def publish_task_cancel_update(task: asyncio.Task):
+    tid = task.get_name()
+    try:
+        # wait for the task to finish clean up
+        await task
+        # succeed cancelling the task
+        await socket_io.emit(EventTopics.State, {
+            "id": tid,
+            "state": TaskState.Cancelled
+        })
+    except Exception as e:
+        # cancellation went wrong..
+        await socket_io.emit(
+            EventTopics.State,
+            {
+                "id": tid,
+                "state": TaskState.Failed,
+                "msg": str(e)
+            },
+        )

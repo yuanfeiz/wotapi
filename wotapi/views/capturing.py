@@ -87,3 +87,10 @@ async def submit_clean_task(request):
     asyncio.create_task(notify_done(t))
 
     return json_response({"id": tid})
+
+@routes.delete(r"/capturing/tasks/capturing/{tid}")
+async def cancel_capturing_task(request):
+    tid = request.match_info.get("tid")
+    camera_service: CameraService = request.app["camera_service"]
+    exit_code = await camera_service.stop_capturing(tid)
+    return json_response({"status": "ok", "id": tid, "exit_code": exit_code})

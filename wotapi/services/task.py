@@ -65,7 +65,8 @@ class TaskService:
     ) -> str:
         tid = id_factory.get()
         logger.debug(f"Accept submitted task({tid}): {action=}, {kwargs=}")
-        filename = f"{action}.py"
+        # action can contains a prefix identifies its group
+        filename = f"{action.split('.')[-1]}.py"
         self.create_task(self._run_script(filename, queue, **kwargs), tid)
         return tid
 
