@@ -1,0 +1,35 @@
+{
+  "SN": "D03000001",
+  "ITH": [10, 255],
+  "CAMERA": {
+    "EXP": 500,
+    "NAME": "MQ013MG-ON",
+    "ROI": null,
+    "GAIN": -3.5
+  },
+  "CPZT": [24, 1.84],
+  "SPV": [108, 5],
+  "LASER": 65.01,
+  "SERVER": {
+    "PORT": 10000,
+    "IP": "127.0.0.1"
+  },
+  "FPZT": [
+    [50, 110],
+    [150, 110]
+  ],
+  "DPATH": "/home/wot/parad3jet/detector/data/timgs/20190731155835",
+  "K_CAPTURING": {
+    "RECORD_RAW": false,
+    "RECORD_PARTICLE": true
+  },
+  "PZT_PF": {
+    "FREQ": 0,
+    "PL": 0.2
+  },
+  "PZT_CF": {
+    "FREQ": 0.2,
+    "PL": 0.2
+  },
+  "SV": 0.3
+}

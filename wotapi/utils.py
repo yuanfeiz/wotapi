@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 # from logging.handlers import TimedRotatingFileHandler
 from shortid import ShortId
@@ -49,3 +50,5 @@ class IdFactory:
 
 
 id_factory = IdFactory()
+
+now = lambda: int(datetime.now().timestamp())

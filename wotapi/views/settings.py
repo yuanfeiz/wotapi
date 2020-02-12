@@ -26,8 +26,8 @@ async def update_settings(request):
     updated_key = payload.get("key")
 
     # Update the config file
-    setting_service: SettingService = request.app["setting_service"]
-    await setting_service.update(new_settings)
+    # setting_service: SettingService = request.app["setting_service"]
+    # await setting_service.update(new_settings)
 
     camera_service: CameraService = request.app["camera_service"]
     if updated_key == "ITH":
@@ -35,10 +35,10 @@ async def update_settings(request):
         params = new_settings["ITH"]
         await camera_service.update_intensity_levels(*params)
     elif updated_key == "CAMERA.EXP":
-        new_value = new_settings["CAMERA"]["EXP"][1]
+        new_value = new_settings["CAMERA"]["EXP"]
         await camera_service.update_camera_exp(new_value)
     elif updated_key == "CAMERA.GAIN":
-        new_value = new_settings["CAMERA"]["GAIN"][1]
+        new_value = new_settings["CAMERA"]["GAIN"]
         await camera_service.update_camera_gain(new_value)
 
     return json_response({"status": "ok", "settings": new_settings})

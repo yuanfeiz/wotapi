@@ -1,7 +1,7 @@
 from wotapi.models import TaskState
 from aiohttp import web
 from ..services import TaskService, MachineService, CameraService
-from ..utils import logger, id_factory
+from ..utils import logger, id_factory, now
 import asyncio
 from .socket_helpers import notify_done, notify_updated
 from ..libs.json_helpers import json_response
@@ -65,28 +65,36 @@ async def reset_particle_count(request):
     return json_response({"id": tid, "status": "done"})
 
 
-@routes.post("/tasks/capturing/capturing")
-async def submit_capturing_task(request):
+@routes.post(r"/tasks/capturing/{action}")
+async def submit_main_task(request):
+    machine_service: MachineService = request.app["machine_service"]
     camera_service: CameraService = request.app["camera_service"]
     task_service: TaskService = request.app["task_service"]
-    tid, queue = await camera_service.start_manual_capturing()
-    t = task_service.get(tid)
-    asyncio.create_task(notify_done(t))
-    return json_response({"id": tid})
 
-
-@routes.post(r"/tasks/capturing/{action}")
-async def submit_clean_task(request):
-    machine_service: MachineService = request.app["machine_service"]
-    task_service: TaskService = request.app["task_service"]
     action = request.match_info["action"]
-    assert action in ["chipclean_surf", "chipclean_bleach", "chipclean_bs"]
-    tid = await machine_service.clean(action)
+
+    # check action is vaid
+    group, script_name = action.split('.')
+    assert group == 'main'
+
+    # machine service handles script name parsing
+    if script_name in ["chipclean_surf", "chipclean_bleach", "chipclean_bs"]:
+        tid = await machine_service.clean(action)
+    elif script_name == 'capturing':
+        tid, _ = await camera_service.start_manual_capturing()
+    else:
+        raise Exception(f'invalid action name: {action}')
+
     t = task_service.get(tid)
 
     asyncio.create_task(notify_done(t))
 
-    return json_response({"id": tid})
+    return json_response({
+        "id": tid,
+        'state': TaskState.Ongoing,
+        'startedAt': now()
+    })
+
 
 @routes.delete(r"/capturing/tasks/capturing/{tid}")
 async def cancel_capturing_task(request):

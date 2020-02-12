@@ -37,6 +37,4 @@ class MachineService:
         return tid
 
     async def clean(self, action: str) -> str:
-        queue = asyncio.Queue()
-        tid = await self.task_service.create_script_task(action, queue)
-        return tid
+        return await self.task_service.create_script_task(action)
