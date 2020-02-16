@@ -115,8 +115,11 @@ def setup_app(app, config):
 
     # not to add static files during CI
     if not os.getenv('GITHUB_ACTIONS'):
-        app.add_routes(
-            [web.static("/app", "../wotapp/dist/", show_index=True)])
+        try:
+            app.add_routes(
+                [web.static("/app", "../wotapp/dist/", show_index=True)])
+        except:
+            pass
 
     setup_aiojobs(app)
     setup_cors(app)

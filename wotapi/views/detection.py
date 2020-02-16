@@ -6,7 +6,6 @@ from ..socket_io import socket_io
 from ..services import DetectorService
 from .socket_helpers import *
 from ..libs.json_helpers import json_response
-import paco
 from aiohttp import web
 
 routes = web.RouteTableDef()

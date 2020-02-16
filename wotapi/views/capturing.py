@@ -12,27 +12,16 @@ routes = web.RouteTableDef()
 
 async def _operate_machine(request: web.Request, coro) -> web.Response:
     task_service: TaskService = request.app["task_service"]
-    started_at = time.time()
 
     tid = await coro
-    try:
-        logger.debug("Waiting for task to finish")
-        await task_service.running_tasks[tid]
 
-        return json_response({
-            "id": tid,
-            "state": TaskState.Completed,
-            "startedAt": started_at
-        })
-    except Exception as e:
-        return json_response(
-            {
-                "id": tid,
-                'state': TaskState.Failed,
-                'startedAt': started_at,
-                'endedAt': time.time()
-            },
-            status=500)
+    asyncio.create_task(notify_done(task_service.get(tid)))
+
+    return json_response({
+        "id": tid,
+        "state": TaskState.Ongoing,
+        "startedAt": now()
+    })
 
 
 @routes.post("/tasks/capturing/laser")
@@ -45,6 +34,19 @@ async def start_laser(request):
 async def start_cpzt(request):
     machine_service: MachineService = request.app["machine_service"]
     return await _operate_machine(request, machine_service.start_pzt())
+
+
+@routes.post('/tasks/capturing/mfs_pump')
+async def start_mfs_pump(request):
+    task_service: TaskService = request.app["task_service"]
+    payload = (await request.json())
+
+    return await _operate_machine(
+        request,
+        task_service.create_script_task(
+            'mfspumpcontrol',
+            None,
+            kwargs={"__SINGLE": [payload['mode'], payload['args']]}))
 
 
 @routes.post("/tasks/capturing/syringe_pump")

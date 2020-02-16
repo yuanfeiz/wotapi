@@ -26,8 +26,8 @@ async def update_settings(request):
     updated_key = payload.get("key")
 
     # Update the config file
-    # setting_service: SettingService = request.app["setting_service"]
-    # await setting_service.update(new_settings)
+    setting_service: SettingService = request.app["setting_service"]
+    await setting_service.update(new_settings)
 
     camera_service: CameraService = request.app["camera_service"]
     if updated_key == "ITH":

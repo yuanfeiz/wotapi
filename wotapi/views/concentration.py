@@ -1,5 +1,5 @@
 from wotapi.models import TaskState
-from wotapi.utils import logger
+from wotapi.utils import logger, now
 from wotapi.views.socket_helpers import notify_done
 from aiohttp import web
 import asyncio
@@ -25,5 +25,5 @@ async def submit_concentration_task(request):
     return json_response({
         "id": tid,
         'state': TaskState.Ongoing,
-        'startedAt': int(datetime.now().timestamp())
+        'startedAt': now()
     })

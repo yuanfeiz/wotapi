@@ -165,11 +165,11 @@ class CameraService:
         self.intensity_stream = await self.hub.subscribe("intensity")
 
     async def initiate_capturing(self, settings):
-        csettings = settings.get("K_CAPTURING")
+        csettings = settings.get("imaging")
         payload = {
             "PSTART": [
-                csettings.get("RECORD_RAW"),
-                csettings.get("RECORD_PARTICLE"),
+                csettings.get("record.raw"),
+                csettings.get("record.particle"),
             ]
         }
         await self.put_item(self.cmd_queue, payload)
@@ -179,9 +179,12 @@ class CameraService:
                                         queue: asyncio.Queue):
         # Step 2: run the script to start as well
         script_args = {
-            "CPZT": ",".join([str(v) for v in settings.get("CPZT")]),
-            "LASER": settings.get("LASER"),
-            "SPV": ",".join([str(v) for v in settings.get("SPV")]),
+            "CPZT":
+            f"{settings['capturing']['pzt.freq']},{settings['capturing']['pzt.voltage']}",
+            "LASER":
+            settings['capturing']['laser.current'],
+            "SPV":
+            f'{settings["capturing"]["syringe.flow"]},{settings["capturing"]["syringe.volume"]}'
         }
 
         logger.debug(f"Run {script_name} with arguments: {script_args=}")
@@ -245,7 +248,7 @@ class CameraService:
                     await classify_task
                 except asyncio.CancelledError:
                     logger.info('Classification task is cancelled')
-                
+
             logger.info('completed start autoflow task')
 
     async def start_manual_capturing(self) -> Tuple[str, asyncio.Queue]:

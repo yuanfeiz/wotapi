@@ -8,9 +8,6 @@ from .log_parser import LogParser
 
 
 async def notify_done(t: asyncio.Task):
-    """
-    Applicable for single mode only
-    """
     tid = t.get_name()
     logger.debug(f'start task state notifier: {tid}')
     try:
