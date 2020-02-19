@@ -35,7 +35,7 @@ async def test_control_syringe_pump(action, args, ok, aiohttp_client, mocker):
     assert 'id' in resp_json
     assert time.time() - resp_json['startedAt'] < 1
 
-    m.assert_awaited_once_with('spcontrol.py', None, __SINGLE=[action, *args])
+    m.assert_awaited_once_with('spcontrol.py', None, _=[action, *args])
 
 
 async def test_control_syringe_pump_exit_code_not_zero(aiohttp_client, mocker):

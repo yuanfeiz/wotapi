@@ -1,4 +1,5 @@
 import asyncio
+from asyncio.exceptions import CancelledError
 from configparser import ConfigParser
 import logging
 from queue import Empty, Queue
@@ -175,8 +176,10 @@ class CameraService:
         await self.put_item(self.cmd_queue, payload)
         logger.info("Requested cqueue to start capturing")
 
-    async def initiate_capturing_script(self, settings, script_name: str,
-                                        queue: asyncio.Queue):
+    async def initiate_capturing_script(self,
+                                        settings,
+                                        script_name: str,
+                                        queue: asyncio.Queue = None):
         # Step 2: run the script to start as well
         script_args = {
             "CPZT":
@@ -238,7 +241,7 @@ class CameraService:
             logger.exception(f"failed to clean up auto mode: {e}")
         finally:
             # shutdown camera
-            await self.stop_capturing(tid, stop_script_name="stopautoflow")
+            await self.stop_capturing("stopautoflow")
 
             # shutdown detector
             if detector_service_connected and classify_task is not None:
@@ -251,22 +254,29 @@ class CameraService:
 
             logger.info('completed start autoflow task')
 
-    async def start_manual_capturing(self) -> Tuple[str, asyncio.Queue]:
-        settings = await self.setting_service.get()
-        queue = asyncio.Queue()
+    async def start_manual_capturing(self) -> str:
+        try:
+            settings = await self.setting_service.get()
 
-        # Step 1: send item to cqueue requesting start capturing
-        await self.initiate_capturing(settings)
-        tid = await self.initiate_capturing_script(settings, "mfs_pd", queue)
+            # Step 1: send item to cqueue requesting start capturing
+            await self.initiate_capturing(settings)
+            tid = await self.initiate_capturing_script(settings, "mfs_pd")
+            return await self.task_service.get(tid)
+        except CancelledError as e:
+            logger.warning('cancelling manual capturing')
+            raise e
+        except Exception as e:
+            logger.error(f'failed to run manual capturing: {e}')
+            raise e
+        finally:
+            await self.stop_capturing('mfs_stop')
 
-        return tid, queue
-
-    async def stop_capturing(self, tid: str, stop_script_name="mfs_stop"):
+    async def stop_capturing(self, stop_script_name):
         payload = {"PSTOP": 1}
         await self.put_item(self.cmd_queue, payload)
         logger.info("Requested cqueue to stop capturing")
 
-        exit_code = await self.task_service.cancel(tid, stop_script_name)
+        exit_code = await self.task_service.run_script(stop_script_name)
         logger.debug(f"Ran stopcap script: {exit_code=}")
         return exit_code
 

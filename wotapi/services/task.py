@@ -13,32 +13,39 @@ class TaskService:
         self.running_tasks: MutableMapping[str, asyncio.Task] = {}
 
     async def _run_script(
-        self, filename: str, queue: asyncio.Queue = None, /, **kwargs
+        self, filename: str, queue: asyncio.Queue = None, /, **script_argv
     ):
         script_path = f"{self.root_path}/{filename}"
+
+        # process script arguments
         args = ""
-        if kwargs.get("__SINGLE"):
-            vs = kwargs.pop("__SINGLE")
+        if "_" in script_argv:
+            vs = script_argv.pop("_")
             args = " ".join([str(v) for v in vs])
-        else:
-            args = " ".join([f"--{k}={v}" for k, v in kwargs.items()])
+
+        args = " ".join([f"--{k}={v}" for k, v in script_argv.items()])
 
         cmd = f"python -u {script_path} {args}"
 
         proc = await asyncio.create_subprocess_shell(
             cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
-        logger.info(f"Executing --- {cmd}({proc.pid})")
+        logger.info(f"Executing --- ({proc.pid}) `$ {cmd}`")
 
         try:
             while not proc.stdout.at_eof():
                 data = await proc.stdout.readline()
                 line = data.decode("utf8").strip()
+
+                if len(line) == 0:
+                    continue
+
                 logger.info(f"({filename}) >>> {line}")
-                if queue and len(line) > 0:
+
+                if queue:
                     await queue.put(line)
             exit_code = await proc.wait()
-            logger.info(f'Finished ---- {cmd}({proc.pid}) {exit_code=}')
+            logger.info(f'Finished ---- ({proc.pid}) `$ {cmd}` {exit_code=}')
 
             # raise exception if exit_code is not 0
             if exit_code != 0:
@@ -61,7 +68,7 @@ class TaskService:
             raise e
 
     async def create_script_task(
-        self, action: str, queue: asyncio.Queue = None, /, **kwargs  # noqa
+        self, action: str, queue: asyncio.Queue = None, **kwargs  # noqa
     ) -> str:
         tid = id_factory.get()
         logger.debug(f"Accept submitted task({tid}): {action=}, {kwargs=}")
@@ -69,6 +76,17 @@ class TaskService:
         filename = f"{action.split('.')[-1]}.py"
         self.create_task(self._run_script(filename, queue, **kwargs), tid)
         return tid
+
+    async def run_script(self, script_filename: str, *script_argv):
+        """
+        Run script, wait until complete
+        """
+        tid = await self.create_script_task(script_filename, None, _=script_argv)
+        # Wait for the stop script to finish
+        exit_code = await self.running_tasks[tid]
+        if exit_code != 0:
+            raise Exception(f"unexpected {exit_code=}")
+        return exit_code
 
     def create_task(self, coro, tid: str = None) -> asyncio.Task:
         """
@@ -80,26 +98,10 @@ class TaskService:
         self.running_tasks[tid] = task
         return task
 
-    async def cancel(self, tid: str, stop_script_filename="stop"):
-        """
-        Cancel the running task.
-
-        Return value is the exit value of stop.py script
-        """
-        try:
-            task = self.running_tasks[tid]
-            logger.debug(f"Force cancelling task {tid}")
-            task.cancel()
-        except KeyError:
-            raise Exception(f"task {tid} is not running")
-
-        tid = await self.create_script_task(stop_script_filename)
-        # Wait for the stop script to finish
-        exit_code = await self.running_tasks[tid]
-        if exit_code != 0:
-            raise Exception(f"unexpected {exit_code=}")
-        return exit_code
-
     def get(self, tid: str) -> asyncio.Task:
         return self.running_tasks[tid]
+
+    def clear(self, tid: str):
+        logger.warning(f'clean up task: {tid}')
+        del self.running_tasks[tid]
 

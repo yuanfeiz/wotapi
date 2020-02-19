@@ -31,6 +31,10 @@ class SettingService:
 
     async def update(self, o: dict):
         async with self.lock:
+            with self.path.open('r+') as f:
+                old_json = json.load(f)
             with self.path.open("w+") as f:
-                json.dump(o, f, indent=2)
-                logger.debug(f"Updated config: {o}")
+                for sec in o.keys():
+                    old_json[sec].update(o[sec])
+                json.dump(old_json, f, indent=2)
+                logger.debug(f"Updated config: {old_json}")

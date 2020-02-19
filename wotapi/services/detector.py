@@ -101,7 +101,7 @@ class DetectorService:
 
             results = []
             while progress_value < 100:
-                batch_end_idx, total_count = self.rpc.getPos()
+                idx, total_count = self.rpc.getPos()
 
                 # handle empty or error cases
                 if total_count == -1:
@@ -116,10 +116,10 @@ class DetectorService:
                 processed_count = len(results)
                 logger.info(f"total processed counts: {processed_count}")
 
-                progress_value = processed_count / total_count * 100.0
+                progress_value = (idx + 1) / total_count * 100.0
 
                 logger.info(
-                    f"detection progress: {progress_value}% ({processed_count}/{total_count})"
+                    f"detection progress: {progress_value}% ({idx}/{total_count})"
                 )
 
                 await self.hub.publish(

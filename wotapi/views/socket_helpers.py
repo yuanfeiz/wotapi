@@ -1,4 +1,5 @@
 import asyncio
+from wotapi.services.task import TaskService
 from wotapi.models import EventTopics, TaskState
 from ..utils import logger
 from ..socket_io import socket_io
@@ -23,6 +24,16 @@ async def notify_done(t: asyncio.Task):
             {
                 "id": tid,
                 "state": TaskState.Completed,
+                "endedAt": int(time.time()),
+            },
+        )
+    except asyncio.CancelledError:
+        logger.warning(f'task {tid} cancelled')
+        await socket_io.emit(
+            EventTopics.State,
+            {
+                "id": tid,
+                "state": TaskState.Cancelled,
                 "endedAt": int(time.time()),
             },
         )
@@ -55,25 +66,3 @@ async def notify_updated(tid: str, sub: Subscriber, parser: LogParser):
         logger.error(f'failed to emit task logs: {e}')
     finally:
         logger.debug(f'shutdown task log notifier: {tid}')
-
-
-async def publish_task_cancel_update(task: asyncio.Task):
-    tid = task.get_name()
-    try:
-        # wait for the task to finish clean up
-        await task
-        # succeed cancelling the task
-        await socket_io.emit(EventTopics.State, {
-            "id": tid,
-            "state": TaskState.Cancelled
-        })
-    except Exception as e:
-        # cancellation went wrong..
-        await socket_io.emit(
-            EventTopics.State,
-            {
-                "id": tid,
-                "state": TaskState.Failed,
-                "msg": str(e)
-            },
-        )

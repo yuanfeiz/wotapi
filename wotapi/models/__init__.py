@@ -12,6 +12,7 @@ class TaskState(Enum):
     Completed = 'k_completed'
     Failed = 'k_failed'
     Cancelled = 'k_cancelled'
+    Cancelling = 'k_cancelling'
 
 
 class EventTopics:

@@ -1,5 +1,5 @@
 {
-  "V01_STS": false,
+  "V01_STS": true,
   "V02_STS": false,
   "V03_STS": false,
   "V04_STS": false,
@@ -14,7 +14,7 @@
   "V13_STS": false,
   "V14_STS": false,
   "V15_STS": false,
-  "V16_STS": false,
+  "V16_STS": true,
   "PS1": [0.0, false, false],
   "PS2": [0.0, false, false],
   "PZT_PF": { "FREQ": 0, "PL": 0, "STS": false, "MODE": 0 },
@@ -31,9 +31,9 @@
     "MFC": false,
     "BLEACH": false
   },
-  "LASER": { "CT": 0.0, "STS": false },
+  "LASER": { "TEMP": 20, "CT": 0.0, "STS": false },
   "SP": { "FR": 0, "VOL": 0.0, "MODE": 0, "STS": false },
-  "BPP": { "RPM": 0, "DIR": 0, "STS": false },
+  "BPP": { "RPM": 75, "DIR": 9, "STS": true },
   "SPP": { "RPM": 0, "DIR": 0, "STS": false },
   "PRCS_MODE": 0,
   "APRCS_STS": false,
