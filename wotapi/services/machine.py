@@ -57,14 +57,9 @@ class MachineService:
         assert action in ["infuse", "withdraw"], f"{action=} is invalid"
         settings = await self.setting_service.get()
         try:
-            tid = await self.task_service.create_script_task(
-                "spcontrol",
-                None,
-                _=[
-                    action, settings['capturing']['syringe.flow'],
-                    settings['capturing']['syringe.volume']
-                ])
-            return await self.task_service.get(tid)
+            return await self.task_service.run_script(
+                "spcontrol", action, settings['capturing']['syringe.flow'],
+                settings['capturing']['syringe.volume'])
         except asyncio.CancelledError as e:
             logger.warning(f'cancel control_syringe_pump task {action=}')
             try:
@@ -76,3 +71,28 @@ class MachineService:
 
     async def clean(self, action: str) -> str:
         return await self.task_service.create_script_task(action)
+
+    async def run_concentration_task(self, action):
+        """
+        wrap concentration task with cancellation
+        """
+        settings = await self.setting_service.get()
+        logger.info('start concenctration task')
+
+        try:
+
+            args = []
+
+            if action == 'main.sampling':
+                args = [settings['concentration']['sv']]
+
+            # submit script task
+            return await self.task_service.run_script(action, *args)
+        except asyncio.CancelledError as e:
+            logger.warning(f'cancel concentration task {action=}')
+            try:
+                await self.task_service.run_script('hys_stop')
+                raise e
+            except Exception as stop_err:
+                logger.error(f'fail to stop concentration script：{stop_err}')
+                raise stop_err

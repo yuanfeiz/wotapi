@@ -182,12 +182,12 @@ class CameraService:
                                         queue: asyncio.Queue = None):
         # Step 2: run the script to start as well
         script_args = {
-            "CPZT":
-            f"{settings['capturing']['pzt.freq']},{settings['capturing']['pzt.voltage']}",
-            "LASER":
-            settings['capturing']['laser.current'],
-            "SPV":
-            f'{settings["capturing"]["syringe.flow"]},{settings["capturing"]["syringe.volume"]}'
+            # "CPZT":
+            # f"{settings['capturing']['pzt.freq']},{settings['capturing']['pzt.voltage']}",
+            # "LASER":
+            # settings['capturing']['laser.current'],
+            # "SPV":
+            # f'{settings["capturing"]["syringe.flow"]},{settings["capturing"]["syringe.volume"]}'
         }
 
         logger.debug(f"Run {script_name} with arguments: {script_args=}")

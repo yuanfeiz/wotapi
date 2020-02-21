@@ -2,34 +2,10 @@ from typing import Awaitable, Coroutine, Union
 from wotapi.models import TaskState
 from aiohttp import web
 from ..services import TaskService, MachineService, CameraService
-from ..utils import logger, id_factory, now
 import asyncio
-from .socket_helpers import notify_done, notify_updated
-from ..libs.json_helpers import json_response
-import time
+from .socket_helpers import spawn_and_respond
 
 routes = web.RouteTableDef()
-
-
-async def spawn_and_respond(
-        request: web.Request, coro: Union[asyncio.Task,
-                                          Awaitable[str]]) -> web.Response:
-    task_service: TaskService = request.app["task_service"]
-
-    if isinstance(coro, asyncio.Task):
-        t: asyncio.Task = coro
-        tid = t.get_name()
-    else:
-        tid = await coro
-        t = task_service.get(tid)
-
-    asyncio.create_task(notify_done(t))
-
-    return json_response({
-        "id": tid,
-        "state": TaskState.Ongoing,
-        "startedAt": now()
-    })
 
 
 @routes.post("/tasks/capturing/laser")
@@ -75,9 +51,8 @@ async def control_syringe_pump(request):
 @routes.post("/tasks/capturing/reset_particle_count")
 async def reset_particle_count(request):
     camera_service: CameraService = request.app["camera_service"]
-    t = asyncio.create_task(camera_service.reset_particle_count())
-    asyncio.create_task(notify_done(t))
-    return json_response({"id": t.get_name(), "state": TaskState.Ongoing})
+    return await spawn_and_respond(
+        request, asyncio.create_task(camera_service.reset_particle_count()))
 
 
 @routes.post(r"/tasks/capturing/{action}")

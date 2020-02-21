@@ -14,16 +14,16 @@
     "gain": 0.9
   },
   "imaging": {
-    "high": 255,
+    "high": 252,
     "low": 10,
     "record.raw": false,
     "record.particle": true
   },
   "concentration": {
     "PZT_PF.freq": 1.9,
-    "PZT_PF.pl": 0.2,
+    "PZT_PF.pl": 0.5,
     "PZT_CF.freq": 1,
     "PZT_CF.pl": 0.4,
-    "sv": 0.3
+    "sv": 1.4
   }
 }

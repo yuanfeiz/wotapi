@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 from wotapi.utils import id_factory, logger
-from typing import Mapping, MutableMapping
+from typing import Awaitable, Mapping, MutableMapping
 import io
 
 TaskDone = "--END--"
@@ -13,17 +13,17 @@ class TaskService:
         self.running_tasks: MutableMapping[str, asyncio.Task] = {}
 
     async def _run_script(
-        self, filename: str, queue: asyncio.Queue = None, /, **script_argv
+        self, filename: str, queue: asyncio.Queue = None, /, **kwargs
     ):
         script_path = f"{self.root_path}/{filename}"
 
         # process script arguments
         args = ""
-        if "_" in script_argv:
-            vs = script_argv.pop("_")
-            args = " ".join([str(v) for v in vs])
+        if "_" in kwargs:
+            vs = kwargs.pop("_")
+            args += " ".join([str(v) for v in vs])
 
-        args = " ".join([f"--{k}={v}" for k, v in script_argv.items()])
+        args += " ".join([f"--{k}={v}" for k, v in kwargs.items()])
 
         cmd = f"python -u {script_path} {args}"
 
@@ -77,7 +77,7 @@ class TaskService:
         self.create_task(self._run_script(filename, queue, **kwargs), tid)
         return tid
 
-    async def run_script(self, script_filename: str, *script_argv):
+    async def run_script(self, script_filename: str, *script_argv) -> int:
         """
         Run script, wait until complete
         """

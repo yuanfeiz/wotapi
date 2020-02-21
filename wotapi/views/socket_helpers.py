@@ -1,11 +1,14 @@
 import asyncio
+from wotapi.libs.json_helpers import json_response
 from wotapi.services.task import TaskService
 from wotapi.models import EventTopics, TaskState
-from ..utils import logger
+from ..utils import logger, now
 from ..socket_io import socket_io
 from aio_pubsub.interfaces import Subscriber
 import time
 from .log_parser import LogParser
+from aiohttp.web import Request, Response
+from typing import Union, Awaitable
 
 
 async def notify_done(t: asyncio.Task):
@@ -66,3 +69,24 @@ async def notify_updated(tid: str, sub: Subscriber, parser: LogParser):
         logger.error(f'failed to emit task logs: {e}')
     finally:
         logger.debug(f'shutdown task log notifier: {tid}')
+
+
+async def spawn_and_respond(
+        request: Request, coro: Union[asyncio.Task,
+                                      Awaitable[str]]) -> Response:
+    task_service: TaskService = request.app["task_service"]
+
+    if isinstance(coro, asyncio.Task):
+        t: asyncio.Task = coro
+        tid = t.get_name()
+    else:
+        tid = await coro
+        t = task_service.get(tid)
+
+    asyncio.create_task(notify_done(t))
+
+    return json_response({
+        "id": tid,
+        "state": TaskState.Ongoing,
+        "startedAt": now()
+    })
