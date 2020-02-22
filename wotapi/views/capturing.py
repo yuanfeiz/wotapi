@@ -69,8 +69,10 @@ async def submit_main_task(request):
 
     # machine service handles script name parsing
     if script_name in ["chipclean_surf", "chipclean_bleach", "mfs_otc"]:
-        return await spawn_and_respond(request,
-                                       task_service.create_script_task(action))
+        return await spawn_and_respond(
+            request,
+            task_service.create_task(machine_service.clean(script_name)))
+
     elif script_name == 'capturing':
         return await spawn_and_respond(
             request,

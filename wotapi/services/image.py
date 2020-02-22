@@ -17,12 +17,6 @@ def frombuffer(buffer, h: int = 488, w: int = 648):
 def blank_image(H: int = 488, W: int = 648):
     # create new iamge
     img = Image.new("L", (W, H))
-
-    # draw a timed watermark shows it's being updating
-    msg = "LOADING..."
-    draw = ImageDraw.Draw(img)
-    w, h = draw.textsize(msg)
-    draw.text(((W - w) / 2, (H - h) / 2), msg, 128)
     return img
 
 

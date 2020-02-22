@@ -1,4 +1,5 @@
 import asyncio
+from asyncio.exceptions import CancelledError
 from . import TaskService, SettingService
 from ..utils import logger
 
@@ -69,8 +70,17 @@ class MachineService:
                 logger.error(f'fail to stop syringe pump script：{stop_err}')
                 raise stop_err
 
-    async def clean(self, action: str) -> str:
-        return await self.task_service.create_script_task(action)
+    async def clean(self, action: str):
+        try:
+            return await self.task_service.run_script(action)
+        except CancelledError as cancel_err:
+            logger.warning(f'cancel clean task {action=}')
+            try:
+                await self.task_service.run_script('mfs_stop')
+                raise cancel_err
+            except Exception as stop_err:
+                logger.error(f'fail to stop clean script：{stop_err}')
+                raise stop_err
 
     async def run_concentration_task(self, action):
         """

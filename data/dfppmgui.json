@@ -19,7 +19,7 @@
   "PS2": [0.0, false, false],
   "PZT_PF": { "FREQ": 0, "PL": 0, "STS": false, "MODE": 0 },
   "PZT_CF": { "FREQ": 0, "PL": 0, "STS": false, "MODE": 0 },
-  "PZT_CH": { "FREQ": 0.0, "PL": 0, "STS": false },
+  "PZT_CH": { "FREQ": 20.0, "PL": 10, "STS": true },
   "LS": {
     "SMPL_HL": false,
     "SMPL_LL": false,
@@ -31,10 +31,10 @@
     "MFC": false,
     "BLEACH": false
   },
-  "LASER": { "TEMP": 20, "CT": 0.0, "STS": false },
-  "SP": { "FR": 0, "VOL": 0.0, "MODE": 0, "STS": false },
+  "LASER": { "TEMP": 20, "CT": 10.0, "STS": true },
+  "SP": { "FR": 42, "VOL": 42.0, "MODE": 0, "STS": true },
   "BPP": { "RPM": 75, "DIR": 9, "STS": true },
-  "SPP": { "RPM": 0, "DIR": 0, "STS": false },
+  "SPP": { "RPM": 15, "DIR": 0, "STS": true },
   "PRCS_MODE": 0,
   "APRCS_STS": false,
   "MPRCS_STS": false,

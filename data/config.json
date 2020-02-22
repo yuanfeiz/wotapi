@@ -1,7 +1,7 @@
 {
   "capturing": {
-    "laser.current": 65.14,
-    "pzt.freq": 103,
+    "laser.current": 65.18,
+    "pzt.freq": 103.003,
     "pzt.voltage": 13,
     "mfs.speed": 20.11,
     "syringe.flow": 116,
@@ -10,7 +10,7 @@
     "syringe.mode": "infuse"
   },
   "camera": {
-    "exposure": 575,
+    "exposure": 1309,
     "gain": 0.9
   },
   "imaging": {
@@ -22,8 +22,8 @@
   "concentration": {
     "PZT_PF.freq": 1.9,
     "PZT_PF.pl": 0.5,
-    "PZT_CF.freq": 1,
+    "PZT_CF.freq": 1000,
     "PZT_CF.pl": 0.4,
-    "sv": 1.4
+    "sv": 1.6
   }
 }
