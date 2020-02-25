@@ -35,8 +35,9 @@ async def timg_feed(request) -> web.StreamResponse:
     img_type = request.match_info.get("img_type").upper()
     logger.debug(f"Subscribe to image stream {img_type=}")
 
-    await write_new_parts(image.img_to_bytes(image.blank_image()), my_boundary,
-                          response)
+    for i in range(2):
+        await write_new_parts(image.img_to_bytes(image.blank_image()),
+                              my_boundary, response)
 
     try:
         async for item in img_stream:
@@ -47,12 +48,12 @@ async def timg_feed(request) -> web.StreamResponse:
             img = image.frombuffer(item[img_type])
             await write_new_parts(image.img_to_bytes(img), my_boundary,
                                   response)
+        await response.write_eof()
     except ConnectionResetError:
         logger.warning(f"Ignored premature client disconnection")
-
-    logger.debug("Finished streaming")
-
-    return response
+    finally:
+        logger.debug("Finished streaming")
+        return response
 
 
 @routes.get('/camera')

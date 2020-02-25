@@ -2,19 +2,19 @@
   "capturing": {
     "laser.current": 65.18,
     "pzt.freq": 103.003,
-    "pzt.voltage": 13,
-    "mfs.speed": 20.11,
+    "pzt.voltage": 15,
+    "mfs.speed": 22,
     "syringe.flow": 116,
     "syringe.volume": 5.03,
-    "mfs.mode": "mfs_pump_sr",
-    "syringe.mode": "infuse"
+    "mfs.mode": "mfs_pump_br",
+    "syringe.mode": "withdraw"
   },
   "camera": {
-    "exposure": 1309,
-    "gain": 0.9
+    "exposure": 1571,
+    "gain": 0.5
   },
   "imaging": {
-    "high": 252,
+    "high": 244,
     "low": 10,
     "record.raw": false,
     "record.particle": true

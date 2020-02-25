@@ -285,21 +285,12 @@ class CameraService:
         return await self.put_item(self.cmd_queue, {"PICH": [low, high]})
 
     async def update_camera_exp(self, exposure: float):
-        min_val, max_val = self.get_info()["EXP"]
-        dv = (math.log(max_val) - math.log(min_val)) / 99.0
-        adjusted_exposure = math.exp(math.log(min_val) + (dv * exposure))
-
-        adjusted_exposure = min(int(adjusted_exposure), max_val)
-        self.rpc.setExp(adjusted_exposure)
-        logger.info(f"Updated camera {exposure=} {adjusted_exposure=}")
+        self.rpc.setExp(exposure)
+        logger.info(f"Updated camera {exposure=}")
 
     async def update_camera_gain(self, gain: float):
-        min_val, max_val = self.get_info()["GAIN"]
-
-        adjusted_gain = gain * (max_val - min_val) / 99.0 + min_val
-        adjusted_gain = min(adjusted_gain, max_val)
-        self.rpc.setGain(adjusted_gain)
-        logger.info(f"Updated camera {gain=} {adjusted_gain=}")
+        self.rpc.setGain(gain)
+        logger.info(f"Updated camera {gain=}")
 
     async def reset_particle_count(self):
         await self.put_item(self.cmd_queue, {"RSCNT": 1})
