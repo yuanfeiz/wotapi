@@ -6,6 +6,7 @@ from wotapi.services.camera import CameraService
 from wotapi.utils import logger
 from wotapi.socket_io import socket_io
 import asyncio
+import os
 
 
 @socket_io.on("message")
@@ -47,7 +48,7 @@ async def sub_results_path_feed(app):
     feed = await camera_service.hub.subscribe("results_path")
     async for item in feed:
         logger.debug(item)
-        await socket_io.emit("results_path", item)
+        await socket_io.emit("results_path", os.path.basename(item))
 
 
 async def sub_sensor_reading_feed(app):
