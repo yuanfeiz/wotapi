@@ -7,7 +7,9 @@
     "syringe.flow": 116,
     "syringe.volume": 5.03,
     "mfs.mode": "mfs_pump_sf",
-    "syringe.mode": "withdraw"
+    "syringe.mode": "withdraw",
+    "mfs.t": 4,
+    "syringe.skip": true
   },
   "camera": {
     "exposure": 1688,
@@ -22,7 +24,7 @@
   "concentration": {
     "PZT_PF.freq": 1.9,
     "PZT_PF.pl": 0.5,
-    "PZT_CF.freq": 1000,
+    "PZT_CF.freq": 964,
     "PZT_CF.pl": 0.4,
     "sv": 1.6
   }

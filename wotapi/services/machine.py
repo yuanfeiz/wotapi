@@ -41,8 +41,8 @@ class MachineService:
                 'mfspumpcontrol',
                 None,
                 _=[
-                    action,
-                    settings['capturing']['mfs.speed'],
+                    action, settings['capturing']['mfs.speed'],
+                    settings['capturing']['mfs.t']
                 ])
             return await self.task_service.get(tid)
         except asyncio.CancelledError as e:
@@ -57,10 +57,15 @@ class MachineService:
     async def control_syringe_pump(self, action: str):
         assert action in ["infuse", "withdraw"], f"{action=} is invalid"
         settings = await self.setting_service.get()
+        # yapf: disable
         try:
             return await self.task_service.run_script(
-                "spcontrol", action, settings['capturing']['syringe.flow'],
-                settings['capturing']['syringe.volume'])
+                "spcontrol",
+                action,
+                settings['capturing']['syringe.flow'],
+                settings['capturing']['syringe.volume'],
+                'lsmfc_off' if settings['capturing']['syringe.skip'] else 'lsmfc_on')
+        # yapf: enable
         except asyncio.CancelledError as e:
             logger.warning(f'cancel control_syringe_pump task {action=}')
             try:
