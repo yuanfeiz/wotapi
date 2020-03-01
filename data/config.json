@@ -6,15 +6,15 @@
     "mfs.speed": 22,
     "syringe.flow": 116,
     "syringe.volume": 5.03,
-    "mfs.mode": "mfs_pump_br",
+    "mfs.mode": "mfs_pump_sf",
     "syringe.mode": "withdraw"
   },
   "camera": {
-    "exposure": 1571,
+    "exposure": 1688,
     "gain": 0.5
   },
   "imaging": {
-    "high": 244,
+    "high": 252,
     "low": 10,
     "record.raw": false,
     "record.particle": true

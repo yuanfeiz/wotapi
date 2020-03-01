@@ -84,7 +84,7 @@ class AutoService:
             interval_secs, defer_secs = self.calc_interval_and_defer_secs(
                 times)
             self.running_task = self.task_service.create_task(
-                self.run_multiple(defer_secs, interval_secs), tid)
+                self.run_scheduled(defer_secs, interval_secs), tid)
             logger.info(
                 f"Scheduled autorun {mode=} {self.running_task}, "
                 f"will be run in {defer_secs}s and interval is "
@@ -132,7 +132,7 @@ class AutoService:
             logger.info(f'Abort run_period({tid}), ran for {idx} times')
             raise e
 
-    async def run_multiple(self, defer_secs: int, interval_secs: int):
+    async def run_scheduled(self, defer_secs: int, interval_secs: int):
         tid = asyncio.current_task().get_name()
         idx = 0
 
@@ -140,7 +140,7 @@ class AutoService:
             return {
                 "id": tid,
                 "event": event,
-                "mode": "multiple",
+                "mode": "scheduled",
                 "batch": idx,
             }
 
@@ -151,13 +151,13 @@ class AutoService:
             async def _run_once():
                 # start run
                 nonlocal idx
-                logger.info(f"Running #{idx} run_multiple({tid})")
-                await self._run("multiple", idx)
+                logger.info(f"Running #{idx} run_scheduled({tid})")
+                await self._run("scheduled", idx)
 
                 # finish
                 idx += 1
 
-            logger.debug(f"Scheduling run_multiple({tid}) in {defer_secs}s, "
+            logger.debug(f"Scheduling run_scheduled({tid}) in {defer_secs}s, "
                          f"interval is {interval_secs}s")
 
             await asyncio.sleep(defer_secs)
@@ -194,7 +194,7 @@ class AutoService:
         # bring up the consumer
         consumer = asyncio.create_task(consume(queue))
         # start auto mode
-        await self.camera_service.start_auto_capturing(queue)
+        await self.camera_service.start_auto_capturing(queue, mode)
         # wait for all events to be consumed
         await queue.join()
         # no events left, shutdown the consumer gracefully
