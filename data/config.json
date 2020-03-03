@@ -4,10 +4,12 @@
     "pzt.freq": 0,
     "pzt.voltage": 0,
     "mfs.speed": 0,
-    "syringe.flow": 0,
-    "syringe.volume": 0,
-    "mfs.mode": "mfs_pump_br",
-    "syringe.mode": "withdraw"
+    "syringe.flow": 500,
+    "syringe.volume": 10,
+    "mfs.mode": "mfs_pump_sf",
+    "syringe.mode": "withdraw",
+    "mfs.t": null,
+    "syringe.skip": null
   },
   "camera": {
     "exposure": 500,
@@ -24,6 +26,6 @@
     "PZT_PF.pl": 0.5,
     "PZT_CF.freq": 1000,
     "PZT_CF.pl": 0.4,
-    "sv": 1.6
+    "sv": 10000
   }
 }
