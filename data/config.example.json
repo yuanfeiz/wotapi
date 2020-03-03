@@ -10,11 +10,11 @@
     "syringe.mode": "withdraw"
   },
   "camera": {
-    "exposure": 1688,
-    "gain": 0.5
+    "exposure": 500,
+    "gain": -3.5
   },
   "imaging": {
-    "high": 252,
+    "high": 150,
     "low": 10,
     "record.raw": false,
     "record.particle": true
