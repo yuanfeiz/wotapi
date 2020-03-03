@@ -177,24 +177,16 @@ class CameraService:
         logger.info("Requested cqueue to start capturing")
 
     async def initiate_capturing_script(self,
-                                        settings,
                                         script_name: str,
+                                        mode: str,
                                         queue: asyncio.Queue = None):
         # Step 2: run the script to start as well
-        script_args = {
-            # "CPZT":
-            # f"{settings['capturing']['pzt.freq']},{settings['capturing']['pzt.voltage']}",
-            # "LASER":
-            # settings['capturing']['laser.current'],
-            # "SPV":
-            # f'{settings["capturing"]["syringe.flow"]},{settings["capturing"]["syringe.volume"]}'
-        }
+        logger.debug(f"Run {script_name} with arguments: {mode}")
+        return await self.task_service.create_script_task(script_name,
+                                                          queue,
+                                                          _=[mode])
 
-        logger.debug(f"Run {script_name} with arguments: {script_args=}")
-        return await self.task_service.create_script_task(
-            script_name, queue, **script_args)
-
-    async def start_auto_capturing(self, queue: asyncio.Queue):
+    async def start_auto_capturing(self, queue: asyncio.Queue, mode: str):
         """
         Run the auto mode 
 
@@ -206,7 +198,7 @@ class CameraService:
         await self.initiate_capturing(settings)
 
         # Submit the task, this doesn't block
-        tid = await self.initiate_capturing_script(settings, "startautoflow",
+        tid = await self.initiate_capturing_script("startautoflow", mode,
                                                    queue)
         detector_service_connected = self.detector_service.connected()
         classify_task = None
