@@ -20,6 +20,7 @@ class SensorService:
         async with aiofiles.open(path, "r+") as f:
             content = await f.readlines()
             content = "".join(content)
+            print(content)
             return json.loads(content)
 
     async def on_reading(self):
