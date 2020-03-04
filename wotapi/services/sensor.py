@@ -33,6 +33,8 @@ class SensorService:
         while True:
             try:
                 values = await self.get_reading_from_filesystem(self.path)
-                yield SensorReading(values=values, timestamp=int(time.time()))
-            finally:
-                await asyncio.sleep(wait_for)
+            except:
+                logger.debug('sensor reading except')
+                continue
+            yield SensorReading(values=values, timestamp=int(time.time()))
+            await asyncio.sleep(wait_for)
