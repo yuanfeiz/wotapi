@@ -101,7 +101,7 @@ def setup_services(app, config):
     app["detection_results_service"] = DetectionResultsService(config)
 
     path = config.get("sensor_service", "PATH")
-    app["sensor_service"] = SensorService(path, sampling_freq=10)
+    app["sensor_service"] = SensorService(path, sampling_freq=2)
 
     return app
 
