@@ -21,7 +21,7 @@ class DetectorService:
     This service relie on a running cgdetector.x64
     """
 
-    label_txt_mappings = ['others', 'crypto', 'glardia', 'beads']
+    label_txt_mappings = ['Others', 'Crypto', 'Giardia', 'Beads']
 
     def __init__(self, config):
         self.debug = config.getboolean("global", "DEBUG", fallback=True)
@@ -29,6 +29,8 @@ class DetectorService:
         self.thresholds = [
             float(v) for v in self.config.get("THRESHOLDS").split(",")
         ]
+        logger.info(
+                    f"thresholds {self.thresholds}")
         self.conn = self._get_conn()
         self.rpc = lazy(lambda: self.conn.root)
         self.hub: PubSub = AMemoryPubSub(asyncio.Queue)
@@ -112,12 +114,14 @@ class DetectorService:
                     break
 
                 logger.debug(f'getting detection results')
-                results = copy.deepcopy(self.rpc.getResults())
-                processed_count = len(results)
+                result = copy.deepcopy(self.rpc.getResults())
+                
+                processed_count = len(result)
+                
                 logger.info(f"total processed counts: {processed_count}")
 
                 progress_value = (idx + 1) / total_count * 100.0
-
+                results = results + result
                 logger.info(
                     f"detection progress: {progress_value}% ({idx}/{total_count})"
                 )
@@ -136,10 +140,11 @@ class DetectorService:
 
             # 4 kinds of label
             triggered_samples = {k: [] for k in self.label_txt_mappings}
-
+            #print(triggered_samples)
             for item in results:
                 filename, label, confidence_level = item
-
+                logger.info(
+                    f"{filename} : {label} {confidence_level}")
                 label = int(label)
                 label_txt = None
                 try:
@@ -158,13 +163,19 @@ class DetectorService:
 
                 bname = Path(filename).stem
 
+
                 if confidence_level >= self.thresholds[label]:
+
+
                     counter[f'{label}|{label_txt}'] += 1
                     triggered_samples[label_txt].append({
                         'idx': int(bname),
                         'confidence': confidence_level,
                         'label': label_txt
                     })
+                    logger.info(
+                        f"{counter=}, details={triggered_samples}"
+                            )
 
                 pathd = (p / str(label) / f"{ confidence_level }_{bname}.png")
                 paths = p / filename
