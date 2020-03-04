@@ -19,8 +19,7 @@ class SensorService:
     async def get_reading_from_filesystem(self, path):
         async with aiofiles.open(path, "r+") as f:
             content = await f.readlines()
-            content = "".join(content)
-            print(content)
+            content = " ".join(content)
             return json.loads(content)
 
     async def on_reading(self):
@@ -32,6 +31,8 @@ class SensorService:
             f"Start getting sensor reading from {self.path} at {self.sampling_freq}/s"
         )
         while True:
-            values = await self.get_reading_from_filesystem(self.path)
-            yield SensorReading(values=values, timestamp=int(time.time()))
-            await asyncio.sleep(wait_for)
+            try:
+                values = await self.get_reading_from_filesystem(self.path)
+                yield SensorReading(values=values, timestamp=int(time.time()))
+            finally:
+                await asyncio.sleep(wait_for)
