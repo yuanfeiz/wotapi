@@ -1,5 +1,5 @@
 {
-  "V01_STS": false,
+  "V01_STS": true,
   "V02_STS": false,
   "V03_STS": false,
   "V04_STS": false,
@@ -15,9 +15,9 @@
   "V14_STS": false,
   "V15_STS": false,
   "V16_STS": false,
-  "PS1": [96.5, true, false],
+  "PS1": [11.5, true, false],
   "PS2": [81.0, false, true],
-  "PZT_PF": { "FREQ": 183, "PL": 250, "STS": false },
+  "PZT_PF": { "FREQ": 100, "PL": 250, "STS": false },
   "PZT_CF": { "FREQ": 182, "PL": 250, "STS": false },
   "PZT_CH": { "FREQ": 1.857, "VOL": 30, "STS": false },
   "LASER": { "CT": 0.0, "TEMP": 25.0, "STS": false },
@@ -26,7 +26,7 @@
   "SPP": { "RPM": 0, "TMR": 0, "STS": false },
   "LS": {
     "SMPL": { "COL": "R", "HEIGHT": 41 },
-    "SURF1": { "COL": "B", "HEIGHT": 15 },
+    "SURF1": { "COL": "B", "HEIGHT": 25 },
     "SURF2": { "COL": "B", "HEIGHT": 15 },
     "ALCH": { "COL": "B", "HEIGHT": 15 },
     "GW": { "COL": "B", "HEIGHT": 85 },

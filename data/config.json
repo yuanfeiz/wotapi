@@ -1,0 +1,32 @@
+{
+  "capturing": {
+    "laser.current": 0,
+    "pzt.freq": 0,
+    "pzt.voltage": 0,
+    "mfs.speed": 10,
+    "syringe.flow": 100,
+    "syringe.volume": 14,
+    "mfs.mode": "mfs_pump_sf",
+    "syringe.mode": "withdraw",
+    "mfs.t": 10,
+    "syringe.skip": false
+  },
+  "camera": {
+    "exposure": 0,
+    "gain": 0
+  },
+  "imaging": {
+    "high": 0,
+    "low": 0,
+    "record.raw": true,
+    "record.particle": true
+  },
+  "concentration": {
+    "PZT_PF.freq": 1.9,
+    "PZT_PF.pl": 0.5,
+    "PZT_CF.freq": 1000,
+    "PZT_CF.pl": 0.4,
+    "sv": 2000
+  }
+}
+
