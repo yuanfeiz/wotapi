@@ -1,6 +1,6 @@
 {
   "capturing": {
-    "laser.current": 0,
+    "laser.current": 111,
     "pzt.freq": 0,
     "pzt.voltage": 0,
     "mfs.speed": 0,
@@ -18,7 +18,7 @@
   "imaging": {
     "high": 0,
     "low": 0,
-    "record.raw": true,
+    "record.raw": false,
     "record.particle": true
   },
   "concentration": {

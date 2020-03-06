@@ -61,16 +61,17 @@ class DetectionResultsService:
 
         res = []
         # enumerate all the run results
-        for run_results_path in self.root.glob(f'{month}*'):
-            # the folder created time with year, month, day, hours, seconds
-            run_id = run_results_path.stem
-            date = run_id[:len('20201225')]
+        for run_results_path in self.root.glob(f'{month}*/'):
+            if run_results_path.is_dir():
+                # the folder created time with year, month, day, hours, seconds
+                run_id = run_results_path.stem
+                date = run_id[:len('20201225')]
 
-            # only png pics count as a indentified positive sample
-            result_state = self.parse_result_file(run_results_path)
+                # only png pics count as a indentified positive sample
+                result_state = self.parse_result_file(run_results_path)
 
-            # per run results
-            res.append({'rid': run_id, 'state': result_state, 'date': date})
+                # per run results
+                res.append({'rid': run_id, 'state': result_state, 'date': date})
 
         keyfunc = lambda x: x['date']
 
@@ -90,21 +91,22 @@ class DetectionResultsService:
         assert int(date[-2:]) <= 31
 
         res = []
-        for run_results_path in self.root.glob(f'{date}*'):
-            # the folder created time with year, month, day, hours, seconds
-            run_id = run_results_path.stem
-            timestamp = int(
-                datetime.strptime(run_id, '%Y%m%d%H%M%S').timestamp())
+        for run_results_path in self.root.glob(f'{date}*/'):
+            if run_results_path.is_dir():
+                # the folder created time with year, month, day, hours, seconds
+                run_id = run_results_path.stem
+                timestamp = int(
+                    datetime.strptime(run_id, '%Y%m%d%H%M%S').timestamp())
 
-            # only png pics count as a indentified positive sample
-            result_state = self.parse_result_file(run_results_path)
+                # only png pics count as a indentified positive sample
+                result_state = self.parse_result_file(run_results_path)
 
-            # per run results
-            res.append({
-                'rid': run_id,
-                'state': result_state,
-                'time': timestamp
-            })
+                # per run results
+                res.append({
+                    'rid': run_id,
+                    'state': result_state,
+                    'time': timestamp
+                })
 
         return res
 
