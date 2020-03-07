@@ -24,6 +24,7 @@ try:
 	time.sleep(5)
 	CFCWS.run_process()
 	time.sleep(5)
+	time.sleep(1200)
 
 except KeyboardInterrupt:
 	time.sleep(1)
