@@ -38,7 +38,8 @@ class DetectorService:
     @lazy_func
     def _get_conn(self):
         # Setup the connection
-        host, port = self.config.get('HOST'), self.config.getint('PORT')
+        host = "localhost"
+        port = 51237
         conn = rpyc.connect(
             host,
             port,

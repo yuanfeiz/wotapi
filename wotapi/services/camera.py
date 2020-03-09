@@ -61,15 +61,11 @@ class CameraService:
 
     @lazy_func
     def _get_queue_mgr(self, queue_config):
-        queue_host, queue_port, authkey = (
-            queue_config.get("host"),
-            queue_config.getint("port"),
-            queue_config.get("authkey").encode("utf8"),
-        )
-        status_queue_name, cmd_queue_name = (
-            queue_config.get("status_queue_name"),
-            queue_config.get("cmd_queue_name"),
-        )
+        queue_host = "localhost"
+        queue_port = 51234
+        authkey ="wotwot".encode("utf-8")
+        status_queue_name = "status_queue"
+        cmd_queue_name = "cmd_queue"
 
         CameraQueueManager.register(status_queue_name)
         CameraQueueManager.register(cmd_queue_name)
@@ -99,7 +95,9 @@ class CameraService:
 
     @lazy_func
     def _get_rpc_conn(self, rpc_config):
-        rpc_host, rpc_port = rpc_config.get("host"), rpc_config.getint("port")
+        rpc_host = "localhost"
+        rpc_port = 51235
+        #rpc_config.get("host"), rpc_config.getint("port")
 
         conn = rpyc.connect(rpc_host, rpc_port)
         logger.info(f'Camera RPC connected! ({rpc_host}:{rpc_port})')
