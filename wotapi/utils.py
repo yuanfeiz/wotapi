@@ -31,7 +31,7 @@ logger.setLevel(logging.DEBUG)
 
 # ban it for too noisy..
 logger.configure(activation=[('wotapi.views.images', False)])
-logger.add("/tmp/logs/wotapi.log",
+logger.add("/mnt/data/logs/wotapi.log",
            rotation="500 MB",
            retention="7 days",
            compression="zip")

@@ -30,11 +30,14 @@ class SensorService:
         logger.debug(
             f"Start getting sensor reading from {self.path} at {self.sampling_freq}/s"
         )
+        ct = 0
         while True:
             try:
                 values = await self.get_reading_from_filesystem(self.path)
             except:
-                logger.debug('sensor reading except')
+                if ct % (5 * self.sampling_freq) == 0:
+                    logger.debug('sensor reading except')
                 continue
             yield SensorReading(values=values, timestamp=int(time.time()))
             await asyncio.sleep(wait_for)
+            ct = ct + 1
