@@ -35,7 +35,7 @@ class SensorService:
             try:
                 values = await self.get_reading_from_filesystem(self.path)
             except:
-                if ct % (5 * self.sampling_freq) == 0:
+                if ct % (10 * self.sampling_freq) == 0:
                     logger.debug('sensor reading except')
                 continue
             yield SensorReading(values=values, timestamp=int(time.time()))
