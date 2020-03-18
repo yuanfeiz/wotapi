@@ -26,7 +26,7 @@ class SettingService:
         async with self.lock:
             with self.path.open("r+") as f:
                 content = json.load(f)
-                logger.debug(f"Get config: {content}")
+                logger.debug(f"Get config {self.path}: {content}")
                 return content
 
     async def update(self, o: dict):
