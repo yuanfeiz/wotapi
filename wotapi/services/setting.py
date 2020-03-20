@@ -19,15 +19,17 @@ class SettingService:
         # are both blocking operation
         self.lock = asyncio.Lock()
 
+        with self.path.open("r+") as f:
+            self.ctx = json.load(f)
+            logger.debug(f"Init Get config from {self.path}: {self.ctx}")
+
     async def get(self):
         """
         If blocking read is ok, then go with it. Otherwise we'll change to aiofiles
         """
         async with self.lock:
-            with self.path.open("r+") as f:
-                content = json.load(f)
-                logger.debug(f"Get config {self.path}: {content}")
-                return content
+            logger.debug(f"Get config {self.path}: {self.ctx}")
+            return self.ctx
 
     async def update(self, o: dict):
         async with self.lock:
@@ -36,5 +38,6 @@ class SettingService:
             with self.path.open("w+") as f:
                 for sec in o.keys():
                     old_json[sec].update(o[sec])
+                self.ctx = old_json
                 json.dump(old_json, f, indent=2)
-                logger.debug(f"Updated config: {old_json}")
+                logger.debug(f"Updated config: {self.path} {old_json}")
