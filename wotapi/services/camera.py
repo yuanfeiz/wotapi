@@ -196,7 +196,7 @@ class CameraService:
         await self.initiate_capturing(settings)
 
         # Submit the task, this doesn't block
-        tid = await self.initiate_capturing_script("startautoflow", mode,
+        tid = await self.initiate_capturing_script("startautoflow", f"{mode} {settings}",
                                                    queue)
         detector_service_connected = self.detector_service.connected()
         classify_task = None
