@@ -250,7 +250,7 @@ class CameraService:
 
             # Step 1: send item to cqueue requesting start capturing
             await self.initiate_capturing(settings)
-            tid = await self.initiate_capturing_script(settings, "mfs_pd")
+            tid = await self.initiate_capturing_script("mfs_pd", settings)
             return await self.task_service.get(tid)
         except CancelledError as e:
             logger.warning('cancelling manual capturing')
