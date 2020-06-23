@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from itertools import groupby
 from pathlib import Path
@@ -61,7 +62,7 @@ class DetectionResultsService:
 
         res = []
         # enumerate all the run results
-        for run_results_path in self.root.glob(f'{month}*/'):
+        for run_results_path in self.root.glob(f'{month}*/').sort():
             if run_results_path.is_dir():
                 # the folder created time with year, month, day, hours, seconds
                 run_id = run_results_path.stem
@@ -91,7 +92,7 @@ class DetectionResultsService:
         assert int(date[-2:]) <= 31
 
         res = []
-        for run_results_path in self.root.glob(f'{date}*/'):
+        for run_results_path in self.root.glob(f'{date}*/').sort():
             if run_results_path.is_dir():
                 # the folder created time with year, month, day, hours, seconds
                 run_id = run_results_path.stem
