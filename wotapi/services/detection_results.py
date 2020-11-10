@@ -62,7 +62,7 @@ class DetectionResultsService:
 
         res = []
         # enumerate all the run results
-        for run_results_path in self.root.glob(f'{month}*/').sort():
+        for run_results_path in self.root.glob(f'{month}*/'):
             if run_results_path.is_dir():
                 # the folder created time with year, month, day, hours, seconds
                 run_id = run_results_path.stem
@@ -92,7 +92,7 @@ class DetectionResultsService:
         assert int(date[-2:]) <= 31
 
         res = []
-        for run_results_path in self.root.glob(f'{date}*/').sort():
+        for run_results_path in self.root.glob(f'{date}*/'):
             if run_results_path.is_dir():
                 # the folder created time with year, month, day, hours, seconds
                 run_id = run_results_path.stem
@@ -108,7 +108,8 @@ class DetectionResultsService:
                     'state': result_state,
                     'time': timestamp
                 })
-
+        keyfunc = lambda x: x['time']
+        res = sorted(res, key=keyfunc)
         return res
 
     def parse_result_file(self, path: Path) -> ResultState:
@@ -124,7 +125,7 @@ class DetectionResultsService:
                     logger.info(
                         f'Find  positive result in {path}: {filename=} {label=} {confidence=}'
                     )
-                    return ResultState.Positive
+                    return ResultState.Negative
 
             return ResultState.Negative
         except FileNotFoundError:
