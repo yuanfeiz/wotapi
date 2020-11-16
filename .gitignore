@@ -10,3 +10,5 @@ memory-profile.png
 mprofile_*.dat
 
 data/config.json
+logs/wotapi.log
+logs

@@ -4,6 +4,7 @@ from wotapi.libs.json_helpers import json_response
 from wotapi.services.task import TaskService
 from aiohttp import web
 from ..models import TaskState, EventTopics
+from .socket_helpers import spawn_and_respond
 
 import asyncio
 routes = web.RouteTableDef()
@@ -42,3 +43,10 @@ async def cancel_task(request):
         "id": tid,
         "state": TaskState.Cancelling,
     })
+
+
+@routes.post(r"/tasks/user_mode/power_off")
+async def power_off(request):
+    task_service: TaskService = request.app['task_service']
+    t = task_service.create_task(task_service.run_script('power_off'))
+    return await spawn_and_respond(request, t)
